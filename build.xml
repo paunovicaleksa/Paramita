@@ -1,0 +1,30 @@
+<project name="anttest">
+    <property name="src" location="src"/>
+    <target name="clean">
+        <delete file="${src}/MJParser.java"/>
+        <delete dir="${src}/ast"/>
+        <delete file="${src}/sym.java"/>
+        <delete file="${src}/Yylex.java"/>
+    </target>
+    <target name="lexerGen">
+        <java jar="lib/JFlex.jar" fork="true">
+            <arg value="-d"/>
+            <arg value="src"/>
+            <arg value="spec/mjlexer.lex"/>
+        </java>
+    </target>
+    <target name="parserGen" depends="lexerGen">
+        <java jar="lib/cup_v10k.jar" fork="true">
+            <arg value="-destdir"/>
+            <arg value="src"/>
+            <arg value="-ast"/>
+            <arg value="src.ast"/>
+            <arg value="-parser"/>
+            <arg value="MJParser"/>
+            <arg value="-dump_states"/>
+            <arg value="-buildtree"/>
+            <arg value="spec/mjparser.cup"/>
+        </java>
+        <replace dir="src" value="ast" token="src.ast" summary="true"/>
+    </target>
+</project>
