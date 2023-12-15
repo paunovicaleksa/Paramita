@@ -39,13 +39,83 @@ scan with {:
 :}
 
 terminal PROG, PRINT, RETURN, VOID, BREAK, CLASS, ELSE, CONST, IF, NEW, READ;
-terminal EXTENDS, CONTINUE, THIS, FOR, STATIC, NAMESPACE, PLUS, MINUS, MUL, DIV;
+terminal EXTENDS, CONTINUE, FOR, STATIC, NAMESPACE, PLUS, MINUS, MUL, DIV;
 terminal MOD, EQUAL, NOTEQU, GREATER, GREQU, LOWER, LOWEQU, LOGAND, LOGOR, ASSIGN;
 terminal INCREMENT, DECREMENT, SEMI, COLON, COMMA, LPAREN, RPAREN, LSQUARE, RSQUARE, LBRACE, RBRACE;
 terminal ARROW, DOT;
 terminal BOOLCONST, CHARCONST, NUMCONST, IDENT;
 
-nonterminal Program Program;
+nonterminal Program, ConstDecl, Type, ConstDeclList, ConstVals, VarDeclList, VarDecl;
+nonterminal DeclarationList, NamespaceList, Namespace;
+nonterminal MethodDeclList, MethodDecl, MethType, FormParList, FormParam, LocalVarList, FormPars;
+
+Program ::= PROG IDENT NamespaceList DeclarationList LBRACE MethodDeclList RBRACE; /* TODO: classes */
+
+NamespaceList ::= NamespaceList Namespace
+            |
+            /* epsilon */
+            ;
 
 
-Program ::= PROG;
+DeclarationList ::= DeclarationList CONST Type ConstDeclList SEMI
+            |
+            DeclarationList Type VarDeclList SEMI
+            |
+            /* epsilon */
+            ;
+
+MethodDeclList ::= MethodDeclList MethodDecl
+            |
+            /* epsilon */
+            ;
+
+MethodDecl ::= MethType IDENT LPAREN FormPars RPAREN LocalVarList LBRACE RBRACE; /* TODO: Statements */
+
+MethType ::= VOID | Type;
+
+FormPars ::= FormParList
+            |
+            /* epsilon */
+            ;
+
+FormParList ::= FormParList COMMA FormParam
+            |
+            FormParam
+            ;
+
+LocalVarList ::= LocalVarList Type VarDeclList SEMI
+            |
+            /* epsilon */
+            ;
+
+FormParam ::= Type IDENT
+            |
+            Type IDENT LSQUARE RSQUARE
+            ;
+
+Namespace ::= NAMESPACE IDENT LBRACE DeclarationList RBRACE;
+
+VarDeclList ::= VarDeclList COMMA VarDecl
+            |
+            VarDecl
+            ;
+
+ConstDeclList ::= ConstDeclList COMMA ConstDecl
+            |
+            ConstDecl
+            ;
+
+ConstDecl ::= IDENT ASSIGN ConstVals;
+
+VarDecl ::= IDENT
+            |
+            IDENT LSQUARE RSQUARE
+            ;
+
+ConstVals ::= NUMCONST | CHARCONST | BOOLCONST;
+
+Type ::= IDENT COLON COLON IDENT
+            |
+            IDENT
+            ;
+

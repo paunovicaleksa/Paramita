@@ -48,7 +48,6 @@ import java_cup.runtime.Symbol;
 "read"      { return new_symbol(sym.READ, yytext()); }
 "extends"   { return new_symbol(sym.EXTENDS, yytext()); }
 "continue"  { return new_symbol(sym.CONTINUE, yytext()); }
-"this"      { return new_symbol(sym.THIS, yytext()); }
 "for"       { return new_symbol(sym.FOR, yytext()); }
 "static"    { return new_symbol(sym.STATIC, yytext()); }
 "namespace" { return new_symbol(sym.NAMESPACE, yytext()); }

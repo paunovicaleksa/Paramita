@@ -37,4 +37,5 @@ src/ast
 src/Yylex.java
 src/MJParser.java
 src/sym.java
+spec/mjparser_astbuild.cup
 

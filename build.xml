@@ -1,12 +1,15 @@
 <project name="anttest">
     <property name="src" location="src"/>
+    <property name="out" location="out"/>
+    <property name="spec" location="spec"/>
     <target name="clean">
         <delete file="${src}/MJParser.java"/>
         <delete dir="${src}/ast"/>
         <delete file="${src}/sym.java"/>
         <delete file="${src}/Yylex.java"/>
+        <delete file="${spec}/mjparser_astbuild.cup"/>
     </target>
-    <target name="lexerGen">
+    <target name="lexerGen" depends="clean">
         <java jar="lib/JFlex.jar" fork="true">
             <arg value="-d"/>
             <arg value="src"/>
@@ -26,5 +29,19 @@
             <arg value="spec/mjparser.cup"/>
         </java>
         <replace dir="src" value="ast" token="src.ast" summary="true"/>
+    </target>
+
+    <target name="compile" depends="parserGen">
+        <mkdir dir="${out}"/>
+        <javac srcdir="${src}" destdir="${out}" includeantruntime="false">
+            <classpath>
+                <pathelement path="lib/JFlex.jar"/>
+                <pathelement path="lib/cup_v10k.jar"/>
+                <pathelement path="lib/log4j-1.2.17.jar"/>
+            </classpath>
+        </javac>
+    </target>
+    <target name="run" depends="compile">
+        <java classpath="${out}:lib/*" classname="MainLexer" fork="true"/>
     </target>
 </project>
