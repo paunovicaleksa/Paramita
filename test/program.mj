@@ -1,13 +1,10 @@
-program mjprog
+program sofija
 
-namespace Sofija {
-}
-
-const char::int a = false, b = 'c', varijabla = 33334;
-const int b = 3;
-int c[], vrmi;
 
 {
-    int main() {}
-    sofija sofija(sofija sofija, sofija sofija) sofija sofija; {}
+    int main() {
+        [sofija, mofija, trofija, *meow] = sofija;
+		[Unpacking::a,Unpacking::b,*Unpacking::niz2] = Unpacking::niz;
+    }
+
 }

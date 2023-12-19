@@ -48,6 +48,16 @@ terminal BOOLCONST, CHARCONST, NUMCONST, IDENT;
 nonterminal Program, ConstDecl, Type, ConstDeclList, ConstVals, VarDeclList, VarDecl;
 nonterminal DeclarationList, NamespaceList, Namespace;
 nonterminal MethodDeclList, MethodDecl, MethType, FormParList, FormParam, LocalVarList, FormPars;
+nonterminal StatementList, DesignatorStatement, Statement, Designator, DesignatorSuffix, DesignatorBase, DesignatorList;
+
+nonterminal Expr, Term, Factor, ActualPars;
+
+nonterminal Condition, CondTerm, CondFact;
+nonterminal ForHeader, ForList, ForCondition, AssignList;
+
+nonterminal AssignOp, RelOp, AddOp, MulOp;
+
+precedence left ELSE;
 
 Program ::= PROG IDENT NamespaceList DeclarationList LBRACE MethodDeclList RBRACE; /* TODO: classes */
 
@@ -61,6 +71,8 @@ DeclarationList ::= DeclarationList CONST Type ConstDeclList SEMI
             |
             DeclarationList Type VarDeclList SEMI
             |
+            DeclarationList ClassDecl
+            |
             /* epsilon */
             ;
 
@@ -69,9 +81,105 @@ MethodDeclList ::= MethodDeclList MethodDecl
             /* epsilon */
             ;
 
-MethodDecl ::= MethType IDENT LPAREN FormPars RPAREN LocalVarList LBRACE RBRACE; /* TODO: Statements */
+MethodDecl ::= MethType IDENT LPAREN FormPars RPAREN LocalVarList LBRACE StatementList RBRACE;
 
 MethType ::= VOID | Type;
+
+StatementList ::= StatementList Statement
+            |
+            /* epsilon */
+            ;
+
+Statement ::= DesignatorStatement SEMI
+            |
+            IF LPAREN Condition RPAREN Statement
+            |
+            IF LPAREN Condition RPAREN Statement ELSE Statement
+            |
+            BREAK SEMI
+            |
+            CONTINUE SEMI
+            |
+            RETURN Expr SEMI
+            |
+            RETURN SEMI
+            |
+            READ LPAREN Designator RPAREN SEMI
+            |
+            PRINT LPAREN Expr RPAREN SEMI
+            |
+            PRINT LPAREN Expr COMMA NUMCONST SEMI
+            |
+            FOR LPAREN ForHeader RPAREN Statement
+            |
+            LBRACE StatementList RBRACE
+            ;
+
+ForHeader ::= ForList SEMI ForCondition SEMI ForList;
+
+ForList ::= AssignList
+            |
+            /* epsilon */
+            ;
+
+ForCondition ::= CondFact
+            |
+            /* epsilon */
+            ;
+
+AssignList ::= AssignList COMMA DesignatorStatement
+            |
+            DesignatorStatement
+            ;
+
+Condition ::= Condition LOGOR CondTerm
+            |
+            CondTerm
+            ;
+
+CondTerm ::= CondTerm LOGAND CondFact
+            |
+            CondFact
+            ;
+
+CondFact ::= Expr
+            |
+            Expr RelOp Expr
+            ;
+
+DesignatorStatement ::= Designator AssignOp Expr
+            |
+            Designator LPAREN ActualPars RPAREN
+            |
+            Designator LPAREN RPAREN
+            |
+            Designator INCREMENT
+            |
+            Designator DECREMENT
+            |
+            LSQUARE DesignatorList MUL Designator RSQUARE ASSIGN Designator
+            ;
+
+DesignatorList ::= DesignatorList Designator COMMA
+            |
+            DesignatorList COMMA
+            |
+            /* epsilon */
+            ;
+
+Designator ::= DesignatorBase DesignatorSuffix;
+
+DesignatorBase ::= IDENT COLON COLON IDENT
+            |
+            IDENT
+            ;
+
+DesignatorSuffix ::= DesignatorSuffix DOT IDENT
+            |
+            DesignatorSuffix LSQUARE Expr RSQUARE
+            |
+            /* epsilon */
+            ;
 
 FormPars ::= FormParList
             |
@@ -93,7 +201,7 @@ FormParam ::= Type IDENT
             Type IDENT LSQUARE RSQUARE
             ;
 
-Namespace ::= NAMESPACE IDENT LBRACE DeclarationList RBRACE;
+Namespace ::= NAMESPACE IDENT LBRACE DeclarationList LBRACE MethodDeclList RBRACE RBRACE;
 
 VarDeclList ::= VarDeclList COMMA VarDecl
             |
@@ -119,3 +227,47 @@ Type ::= IDENT COLON COLON IDENT
             IDENT
             ;
 
+ActualPars ::= ActualPars COMMA Expr
+            |
+            Expr
+            ;
+
+Expr ::= Term
+            |
+            MINUS Term
+            |
+            Expr AddOp Term
+            |
+            Expr AddOp MINUS Term
+            ;
+
+Term ::= Factor
+            |
+            Term MulOp Factor
+            ;
+
+Factor ::= Designator
+            |
+            Designator LPAREN ActualPars RPAREN
+            |
+            Designator LPAREN RPAREN
+            |
+            NUMCONST
+            |
+            BOOLCONST
+            |
+            CHARCONST
+            |
+            NEW Type LSQUARE Expr RSQUARE
+            |
+            NEW Type LPAREN ActualPars RPAREN
+            |
+            NEW Type LPAREN RPAREN
+            |
+            LPAREN Expr RPAREN
+            ;
+
+AssignOp ::= ASSIGN;
+RelOp ::= EQUAL | NOTEQU | GREATER | GREQU | LOWER | LOWEQU;
+AddOp ::= PLUS | MINUS;
+MulOp ::= MUL | DIV | MOD;
