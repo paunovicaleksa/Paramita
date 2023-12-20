@@ -15,7 +15,7 @@ import util.Log4JUtils;
 public class Main {
 
 	static {
-		DOMConfigurator.configure(Log4JUtils.instance().findLoggerConfigFile());
+		DOMConfigurator.configure("config/log4j.xml");
 		Log4JUtils.instance().prepareLogFile(Logger.getRootLogger());
 	}
 	
@@ -25,7 +25,7 @@ public class Main {
 		
 		Reader br = null;
 		try {
-			File sourceCode = new File("test/test302.mj");
+			File sourceCode = new File("test/program.mj");
 			log.info("Compiling source file: " + sourceCode.getAbsolutePath());
 			
 			br = new BufferedReader(new FileReader(sourceCode));

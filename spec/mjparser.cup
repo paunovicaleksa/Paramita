@@ -45,10 +45,11 @@ terminal INCREMENT, DECREMENT, SEMI, COLON, COMMA, LPAREN, RPAREN, LSQUARE, RSQU
 terminal ARROW, DOT;
 terminal BOOLCONST, CHARCONST, NUMCONST, IDENT;
 
-nonterminal Program, ConstDecl, Type, ConstDeclList, ConstVals, VarDeclList, VarDecl;
+nonterminal Program, ConstDecl, Type, ConstDeclList, ConstVals, ConstType, VarDeclList, VarDecl, VarType;
 nonterminal DeclarationList, NamespaceList, Namespace;
 nonterminal MethodDeclList, MethodDecl, MethType, FormParList, FormParam, LocalVarList, FormPars;
 nonterminal StatementList, DesignatorStatement, Statement, Designator, DesignatorSuffix, DesignatorBase, DesignatorList;
+nonterminal ClassDecl, ClassMethods, ClassExtends, ClassStaticVars, ClassStaticInitializers;
 
 nonterminal Expr, Term, Factor, ActualPars;
 
@@ -59,7 +60,7 @@ nonterminal AssignOp, RelOp, AddOp, MulOp;
 
 precedence left ELSE;
 
-Program ::= PROG IDENT NamespaceList DeclarationList LBRACE MethodDeclList RBRACE; /* TODO: classes */
+Program ::= PROG IDENT NamespaceList DeclarationList LBRACE MethodDeclList RBRACE;
 
 NamespaceList ::= NamespaceList Namespace
             |
@@ -67,11 +68,42 @@ NamespaceList ::= NamespaceList Namespace
             ;
 
 
-DeclarationList ::= DeclarationList CONST Type ConstDeclList SEMI
+DeclarationList ::= DeclarationList ConstType
             |
-            DeclarationList Type VarDeclList SEMI
+            DeclarationList VarType
             |
             DeclarationList ClassDecl
+            |
+            /* epsilon */
+            ;
+
+VarType ::= Type VarDeclList SEMI
+            |
+            error SEMI
+            ;
+
+ConstType ::= CONST Type ConstDeclList SEMI;
+
+ClassDecl ::= CLASS IDENT ClassExtends LBRACE ClassStaticVars ClassStaticInitializers LocalVarList ClassMethods RBRACE;
+
+ClassExtends ::= EXTENDS Type
+            |
+            error
+            |
+            /* epsilon */
+            ;
+
+ClassStaticVars ::= ClassStaticVars STATIC VarType
+            |
+            /* epsilon */
+            ;
+
+ClassStaticInitializers ::=  STATIC LBRACE StatementList RBRACE ClassStaticInitializers
+            |
+            /* epsilon */
+            ;
+
+ClassMethods ::= LBRACE MethodDeclList RBRACE
             |
             /* epsilon */
             ;
@@ -135,6 +167,8 @@ AssignList ::= AssignList COMMA DesignatorStatement
 Condition ::= Condition LOGOR CondTerm
             |
             CondTerm
+            |
+            error
             ;
 
 CondTerm ::= CondTerm LOGAND CondFact
@@ -149,6 +183,8 @@ CondFact ::= Expr
 
 DesignatorStatement ::= Designator AssignOp Expr
             |
+            error
+            |
             Designator LPAREN ActualPars RPAREN
             |
             Designator LPAREN RPAREN
@@ -159,6 +195,7 @@ DesignatorStatement ::= Designator AssignOp Expr
             |
             LSQUARE DesignatorList MUL Designator RSQUARE ASSIGN Designator
             ;
+
 
 DesignatorList ::= DesignatorList Designator COMMA
             |
@@ -191,7 +228,7 @@ FormParList ::= FormParList COMMA FormParam
             FormParam
             ;
 
-LocalVarList ::= LocalVarList Type VarDeclList SEMI
+LocalVarList ::= LocalVarList VarType
             |
             /* epsilon */
             ;
@@ -199,6 +236,8 @@ LocalVarList ::= LocalVarList Type VarDeclList SEMI
 FormParam ::= Type IDENT
             |
             Type IDENT LSQUARE RSQUARE
+            |
+            error
             ;
 
 Namespace ::= NAMESPACE IDENT LBRACE DeclarationList LBRACE MethodDeclList RBRACE RBRACE;
@@ -218,6 +257,8 @@ ConstDecl ::= IDENT ASSIGN ConstVals;
 VarDecl ::= IDENT
             |
             IDENT LSQUARE RSQUARE
+            |
+            error
             ;
 
 ConstVals ::= NUMCONST | CHARCONST | BOOLCONST;

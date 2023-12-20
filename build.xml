@@ -9,14 +9,19 @@
         <delete file="${src}/Yylex.java"/>
         <delete file="${spec}/mjparser_astbuild.cup"/>
     </target>
-    <target name="lexerGen" depends="clean">
+    <target name="lexerGen">
+        <delete file="${src}/Yylex.java"/>
         <java jar="lib/JFlex.jar" fork="true">
             <arg value="-d"/>
             <arg value="src"/>
             <arg value="spec/mjlexer.lex"/>
         </java>
     </target>
-    <target name="parserGen" depends="lexerGen">
+    <target name="parserGen" >
+        <delete dir="${src}/ast"/>
+        <delete file="${src}/MJParser.java"/>
+        <delete file="${src}/sym.java"/>
+        <delete file="${spec}/mjparser_astbuild.cup"/>
         <java jar="lib/cup_v10k.jar" fork="true">
             <arg value="-destdir"/>
             <arg value="src"/>
@@ -31,7 +36,7 @@
         <replace dir="src" value="ast" token="src.ast" summary="true"/>
     </target>
 
-    <target name="compile" depends="parserGen">
+    <target name="compile" depends="parserGen,lexerGen">
         <mkdir dir="${out}"/>
         <javac srcdir="${src}" destdir="${out}" includeantruntime="false">
             <classpath>
@@ -42,6 +47,6 @@
         </javac>
     </target>
     <target name="run" depends="compile">
-        <java classpath="${out}:lib/*" classname="MainLexer" fork="true"/>
+        <java classpath="${out}:lib/*" classname="Main" fork="true"/>
     </target>
 </project>

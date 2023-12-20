@@ -1,10 +1,14 @@
 program sofija
 
+int b b, e;
+
+class vsdeda re {
+    static int a,,;
+    {}
+}
 
 {
     int main() {
-        [sofija, mofija, trofija, *meow] = sofija;
-		[Unpacking::a,Unpacking::b,*Unpacking::niz2] = Unpacking::niz;
+        i:a= 2;
     }
-
 }
