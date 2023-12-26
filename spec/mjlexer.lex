@@ -4,12 +4,10 @@ import java_cup.runtime.Symbol;
 
 %{
 
-	// ukljucivanje informacije o poziciji tokena
 	private Symbol new_symbol(int type) {
 		return new Symbol(type, yyline+1, yycolumn);
 	}
 	
-	// ukljucivanje informacije o poziciji tokena
 	private Symbol new_symbol(int type, Object value) {
 		return new Symbol(type, yyline+1, yycolumn, value);
 	}
@@ -83,8 +81,9 @@ import java_cup.runtime.Symbol;
 <COMMENT> . {yybegin(COMMENT);}
 <COMMENT> "\r\n" { yybegin(YYINITIAL); }
 
-"true" | "false"        { return new_symbol(sym.BOOLCONST, yytext()); }
-\'.\'         { return new_symbol(sym.CHARCONST, yytext()); }
+"true"        { return new_symbol(sym.BOOLCONST, true); }
+"false"       { return new_symbol(sym.BOOLCONST, false);}
+\'.\'         { return new_symbol(sym.CHARCONST, yytext().charAt(1)); }
 [0-9]+                  { return new_symbol(sym.NUMCONST, new Integer (yytext())); }
 [a-zA-Z][a-zA-Z0-9_]* 	{ return new_symbol (sym.IDENT, yytext()); }
 

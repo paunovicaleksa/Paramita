@@ -13,17 +13,17 @@ parser code {:
     }
   
     public void syntax_error(Symbol cur_token) {
-        report_error("\nSintaksna greska", cur_token);
+        report_error("\nSyntax error", cur_token);
     }
   
     public void unrecovered_syntax_error(Symbol cur_token) throws java.lang.Exception {
-        report_fatal_error("Fatalna greska, parsiranje se ne moze nastaviti", cur_token);
+        report_fatal_error("Fatal error at: ", cur_token);
     }
 
     public void report_error(String message, Object info) {
     	StringBuilder msg = new StringBuilder(message); 
     	if (info instanceof Symbol)
-            msg.append (" na liniji ").append(((Symbol)info).left);
+            msg.append (" on line ").append(((Symbol)info).left);
         log.error(msg.toString());
     }
 
@@ -43,13 +43,17 @@ terminal EXTENDS, CONTINUE, FOR, STATIC, NAMESPACE, PLUS, MINUS, MUL, DIV;
 terminal MOD, EQUAL, NOTEQU, GREATER, GREQU, LOWER, LOWEQU, LOGAND, LOGOR, ASSIGN;
 terminal INCREMENT, DECREMENT, SEMI, COLON, COMMA, LPAREN, RPAREN, LSQUARE, RSQUARE, LBRACE, RBRACE;
 terminal ARROW, DOT;
-terminal BOOLCONST, CHARCONST, NUMCONST, IDENT;
+terminal Bool BOOLCONST;
+terminal char CHARCONST;
+terminal Integer NUMCONST;
+terminal String IDENT;
 
 nonterminal Program, ConstDecl, Type, ConstDeclList, ConstVals, ConstType, VarDeclList, VarDecl, VarType;
 nonterminal DeclarationList, NamespaceList, Namespace;
 nonterminal MethodDeclList, MethodDecl, MethType, FormParList, FormParam, LocalVarList, FormPars;
 nonterminal StatementList, DesignatorStatement, Statement, Designator, DesignatorSuffix, DesignatorBase, DesignatorList;
-nonterminal ClassDecl, ClassMethods, ClassExtends, ClassStaticVars, ClassStaticInitializers;
+nonterminal ClassDecl, ClassMethods, ClassExtends, ClassStaticVars, ClassStaticInitializers, ClassStaticInitializerList, ClassStaticInitializer;
+nonterminal ClassVarList, ClassVarType, ClassStaticVar;
 
 nonterminal Expr, Term, Factor, ActualPars;
 
@@ -60,255 +64,274 @@ nonterminal AssignOp, RelOp, AddOp, MulOp;
 
 precedence left ELSE;
 
-Program ::= PROG IDENT NamespaceList DeclarationList LBRACE MethodDeclList RBRACE;
+Program ::= (Program) PROG IDENT:name NamespaceList DeclarationList LBRACE MethodDeclList RBRACE;
 
-NamespaceList ::= NamespaceList Namespace
+NamespaceList ::= (NameSpaceListDecl) NamespaceList Namespace
             |
-            /* epsilon */
+            (NameSpaceListEmpty) /* epsilon */
             ;
 
 
-DeclarationList ::= DeclarationList ConstType
+DeclarationList ::= (DeclarationListConst) DeclarationList ConstType
             |
-            DeclarationList VarType
+            (DeclarationListTyped) DeclarationList VarType
             |
-            DeclarationList ClassDecl
+            (DeclarationListClass) DeclarationList ClassDecl
             |
-            /* epsilon */
+            (DeclarationListEmpty) /* epsilon */
             ;
 
-VarType ::= Type VarDeclList SEMI
+VarType ::= (VarType) Type VarDeclList SEMI
             |
-            error SEMI
+            (VarTypeError) error:l SEMI {: parser.report_error("Error found in variable declaration, recovery until ';'", lleft); :}
             ;
 
-ConstType ::= CONST Type ConstDeclList SEMI;
+ConstType ::= (ConstType) CONST Type ConstDeclList SEMI;
 
-ClassDecl ::= CLASS IDENT ClassExtends LBRACE ClassStaticVars ClassStaticInitializers LocalVarList ClassMethods RBRACE;
+ClassDecl ::= (ClassDecl) CLASS IDENT:name ClassExtends LBRACE ClassStaticVars ClassStaticInitializers ClassVarList ClassMethods RBRACE;
 
-ClassExtends ::= EXTENDS Type
+ClassExtends ::= (ClassExtendsType) EXTENDS Type
             |
-            error
+            (ClassExtendsError) error:l {: parser.report_error("Error during class declaration, recovery until '{'", lleft); :}
             |
-            /* epsilon */
+            (ClassExtendsEmpty) /* epsilon */
             ;
 
-ClassStaticVars ::= ClassStaticVars STATIC VarType
+ClassStaticVars ::= (ClassStaticVars) ClassStaticVar
             |
-            /* epsilon */
+            (ClassStaticVarsEmpty) /* epsilon */
             ;
 
-ClassStaticInitializers ::=  STATIC LBRACE StatementList RBRACE ClassStaticInitializers
+ClassStaticVar ::= (ClassStaticVar) ClassStaticVars STATIC ClassVarType;
+
+ClassStaticInitializers ::= (ClassStaticInitializers) ClassStaticInitializerList
             |
-            /* epsilon */
+            (ClassStaticInitializersEmpty) /* epsilon */
             ;
 
-ClassMethods ::= LBRACE MethodDeclList RBRACE
+ClassStaticInitializerList ::= (ClassStaticInitializerListSingle) ClassStaticInitializer
             |
-            /* epsilon */
+            (ClassStaticInitializerList) ClassStaticInitializerList ClassStaticInitializer
             ;
 
-MethodDeclList ::= MethodDeclList MethodDecl
+ClassStaticInitializer ::= (ClassStaticInitializer) STATIC LBRACE StatementList RBRACE;
+
+ClassMethods ::= (ClassMethods) LBRACE MethodDeclList RBRACE
             |
-            /* epsilon */
+            (ClassMethodsEmpty) /* epsilon */
             ;
 
-MethodDecl ::= MethType IDENT LPAREN FormPars RPAREN LocalVarList LBRACE StatementList RBRACE;
-
-MethType ::= VOID | Type;
-
-StatementList ::= StatementList Statement
+MethodDeclList ::= (MethodDeclList) MethodDeclList MethodDecl
             |
-            /* epsilon */
+            (MethodDeclListEmpty) /* epsilon */
             ;
 
-Statement ::= DesignatorStatement SEMI
+MethodDecl ::= (MethodDecl) MethType IDENT:name LPAREN FormPars RPAREN LocalVarList LBRACE StatementList RBRACE;
+
+ClassVarList ::= (ClassVarList) ClassVarList ClassVarType
             |
-            IF LPAREN Condition RPAREN Statement
-            |
-            IF LPAREN Condition RPAREN Statement ELSE Statement
-            |
-            BREAK SEMI
-            |
-            CONTINUE SEMI
-            |
-            RETURN Expr SEMI
-            |
-            RETURN SEMI
-            |
-            READ LPAREN Designator RPAREN SEMI
-            |
-            PRINT LPAREN Expr RPAREN SEMI
-            |
-            PRINT LPAREN Expr COMMA NUMCONST SEMI
-            |
-            FOR LPAREN ForHeader RPAREN Statement
-            |
-            LBRACE StatementList RBRACE
+            (ClassVarListEmpty) /* epsilon */
             ;
 
-ForHeader ::= ForList SEMI ForCondition SEMI ForList;
-
-ForList ::= AssignList
+ClassVarType ::= (ClassVarType) Type VarDeclList SEMI
             |
-            /* epsilon */
+            (ClassVarTypeError) error:l SEMI {: parser.report_error("Error during variable declaration, recovery until ';'", lleft); :}
             ;
 
-ForCondition ::= CondFact
+MethType ::= (MethVoid) VOID | (MethType) Type;
+
+StatementList ::= (StatementList) StatementList Statement
             |
-            /* epsilon */
+            (StatementListEmpty) /* epsilon */
             ;
 
-AssignList ::= AssignList COMMA DesignatorStatement
+Statement ::= (StatementDesignatorStatement) DesignatorStatement SEMI
             |
-            DesignatorStatement
+            (StatementIf) IF LPAREN Condition RPAREN Statement
+            |
+            (StatementIfElse) IF LPAREN Condition RPAREN Statement ELSE Statement
+            |
+            (StatementBreak) BREAK SEMI
+            |
+            (StatementContinue) CONTINUE SEMI
+            |
+            (StatementReturnExpr) RETURN Expr SEMI
+            |
+            (StatementReturn) RETURN SEMI
+            |
+            (StatementRead) READ LPAREN Designator RPAREN SEMI
+            |
+            (StatementPrint) PRINT LPAREN Expr RPAREN SEMI
+            |
+            (StatementPrintNumber) PRINT LPAREN Expr COMMA NUMCONST:number SEMI
+            |
+            (StatementFor) FOR LPAREN ForHeader RPAREN Statement
+            |
+            (StatementStatementList) LBRACE StatementList RBRACE
             ;
 
-Condition ::= Condition LOGOR CondTerm
+ForHeader ::= (ForHeader) ForList SEMI ForCondition SEMI ForList;
+
+ForList ::= (ForList) AssignList
             |
-            CondTerm
-            |
-            error
+            (ForListEmpty) /* epsilon */
             ;
 
-CondTerm ::= CondTerm LOGAND CondFact
+ForCondition ::= (ForCondition) CondFact
             |
-            CondFact
+            (ForConditionEmpty) /* epsilon */
             ;
 
-CondFact ::= Expr
+AssignList ::= (AssignList) AssignList COMMA DesignatorStatement
             |
-            Expr RelOp Expr
+            (AssignListSingle) DesignatorStatement
             ;
 
-DesignatorStatement ::= Designator AssignOp Expr
+Condition ::= (Condition) Condition LOGOR CondTerm
             |
-            error
+            (ConditionSingle) CondTerm
             |
-            Designator LPAREN ActualPars RPAREN
+            (ConditionError) error:l {: parser.report_error("Error found in if statement, recovery until ')'", lleft); :}
+            ;
+
+CondTerm ::= (CondTerm) CondTerm LOGAND CondFact
             |
-            Designator LPAREN RPAREN
+            (CondTermSingle) CondFact
+            ;
+
+CondFact ::= (CondFactExpr) Expr
             |
-            Designator INCREMENT
+            (CondFactRelExpr) Expr RelOp Expr
+            ;
+
+DesignatorStatement ::= (DesignatorStatementAssignExpr) Designator AssignOp Expr
             |
-            Designator DECREMENT
+            (DesignatorStatementError) error:l {: parser.report_error("Error found in designator statement, recovery until ';'", lleft); :}
             |
-            LSQUARE DesignatorList MUL Designator RSQUARE ASSIGN Designator
+            (DesignatorStatementCall) Designator LPAREN ActualPars RPAREN
+            |
+            (DesignatorStatementCallNoPars) Designator LPAREN RPAREN
+            |
+            (DesignatorStatementIncrement) Designator INCREMENT
+            |
+            (DesignatorStatementDecrement) Designator DECREMENT
+            |
+            (DesignatorStatementSquare) LSQUARE DesignatorList MUL Designator RSQUARE ASSIGN Designator
             ;
 
 
-DesignatorList ::= DesignatorList Designator COMMA
+DesignatorList ::= (DesignatorList) DesignatorList Designator COMMA
             |
-            DesignatorList COMMA
+            (DesignatorListComma) DesignatorList COMMA
             |
-            /* epsilon */
+            (DesignatorListEmpty) /* epsilon */
             ;
 
-Designator ::= DesignatorBase DesignatorSuffix;
+Designator ::= (Designator) DesignatorBase DesignatorSuffix;
 
-DesignatorBase ::= IDENT COLON COLON IDENT
+DesignatorBase ::= (DesignatorBaseNamespace) IDENT COLON COLON IDENT
             |
-            IDENT
+            (DesignatorBase) IDENT
             ;
 
-DesignatorSuffix ::= DesignatorSuffix DOT IDENT
+DesignatorSuffix ::= (DesignatorSuffixDot) DesignatorSuffix DOT IDENT
             |
-            DesignatorSuffix LSQUARE Expr RSQUARE
+            (DesignatorSuffixArray) DesignatorSuffix LSQUARE Expr RSQUARE
             |
-            /* epsilon */
+            (DesignatorSuffixEmpty) /* epsilon */
             ;
 
-FormPars ::= FormParList
+FormPars ::= (FormPars) FormParList
             |
-            /* epsilon */
+            (FormParsEmpty) /* epsilon */
             ;
 
-FormParList ::= FormParList COMMA FormParam
+FormParList ::= (FormParList) FormParList COMMA FormParam
             |
-            FormParam
+            (FormParListSingle) FormParam
             ;
 
-LocalVarList ::= LocalVarList VarType
+LocalVarList ::= (LocalVarList) LocalVarList VarType
             |
-            /* epsilon */
+            (LocalVarListEmpty) /* epsilon */
             ;
 
-FormParam ::= Type IDENT
+FormParam ::= (FormParam) Type IDENT:param
             |
-            Type IDENT LSQUARE RSQUARE
+            (FormParamArray) IDENT:param LSQUARE RSQUARE
             |
-            error
+            (FormParamError) error:l {: parser.report_error("Error found in Formal parameter declaration, recovery until ')'", lleft); :}
             ;
 
-Namespace ::= NAMESPACE IDENT LBRACE DeclarationList LBRACE MethodDeclList RBRACE RBRACE;
+Namespace ::= (NameSpace) NAMESPACE IDENT LBRACE DeclarationList LBRACE MethodDeclList RBRACE RBRACE;
 
-VarDeclList ::= VarDeclList COMMA VarDecl
+VarDeclList ::= (VarDeclList) VarDeclList COMMA VarDecl
             |
-            VarDecl
+            (VarDeclListSingle) VarDecl
             ;
 
-ConstDeclList ::= ConstDeclList COMMA ConstDecl
+ConstDeclList ::= (ConstDeclList) ConstDeclList COMMA ConstDecl
             |
-            ConstDecl
+            (ConstDeclListSingle) ConstDecl
             ;
 
-ConstDecl ::= IDENT ASSIGN ConstVals;
+ConstDecl ::= (ConstDecl) IDENT:name ASSIGN ConstVals;
 
-VarDecl ::= IDENT
+VarDecl ::= (VarDecl) IDENT:var
             |
-            IDENT LSQUARE RSQUARE
+            (VarDeclArray) IDENT:var LSQUARE RSQUARE
             |
-            error
+            (VarDeclError) error:l {: parser.report_error("Error found in variable declaration, recovery until ','", lleft); :}
             ;
 
-ConstVals ::= NUMCONST | CHARCONST | BOOLCONST;
+ConstVals ::= (NumberConst) NUMCONST | (CharConst) CHARCONST | (BoolConst) BOOLCONST;
 
-Type ::= IDENT COLON COLON IDENT
+Type ::= (TypeNamespace) IDENT:typePrefix COLON COLON IDENT:typename
             |
-            IDENT
+            (Type) IDENT:typename
             ;
 
-ActualPars ::= ActualPars COMMA Expr
+ActualPars ::= (ActualPars) ActualPars COMMA Expr
             |
-            Expr
+            (ActualParsSingle) Expr
             ;
 
-Expr ::= Term
+Expr ::= (ExprTerm) Term
             |
-            MINUS Term
+            (ExprMinusTerm) MINUS Term
             |
-            Expr AddOp Term
+            (ExprAddop) Expr AddOp Term
             |
-            Expr AddOp MINUS Term
+            (ExprAddopMinus) Expr AddOp MINUS Term
             ;
 
-Term ::= Factor
+Term ::= (TermFactor) Factor
             |
-            Term MulOp Factor
+            (TermMulOp) Term MulOp Factor
             ;
 
-Factor ::= Designator
+Factor ::= (FactorDesignator) Designator
             |
-            Designator LPAREN ActualPars RPAREN
+            (FactorCall) Designator LPAREN ActualPars RPAREN
             |
-            Designator LPAREN RPAREN
+            (FactorCallNoPars) Designator LPAREN RPAREN
             |
-            NUMCONST
+            (FactorNumconst) NUMCONST:numberConstant
             |
-            BOOLCONST
+            (FactorBoolconst) BOOLCONST:boolConstant
             |
-            CHARCONST
+            (FactorCharconst) CHARCONST:charConstant
             |
-            NEW Type LSQUARE Expr RSQUARE
+            (FactorNewArray) NEW Type LSQUARE Expr RSQUARE
             |
-            NEW Type LPAREN ActualPars RPAREN
+            (FactorNewType) NEW Type LPAREN ActualPars RPAREN
             |
-            NEW Type LPAREN RPAREN
+            (FactorNewTypeNoPars) NEW Type LPAREN RPAREN
             |
-            LPAREN Expr RPAREN
+            (FactorExpr) LPAREN Expr RPAREN
             ;
 
-AssignOp ::= ASSIGN;
-RelOp ::= EQUAL | NOTEQU | GREATER | GREQU | LOWER | LOWEQU;
-AddOp ::= PLUS | MINUS;
-MulOp ::= MUL | DIV | MOD;
+AssignOp ::= (AssignOp) ASSIGN;
+RelOp ::= (Equal) EQUAL | (NotEqu) NOTEQU | (Greater) GREATER | (GrEqu) GREQU | (Lower) LOWER | (LowEqu) LOWEQU;
+AddOp ::= (Plus) PLUS | (Minus) MINUS;
+MulOp ::= (Mul) MUL | (Div) DIV | (Mod) MOD;
