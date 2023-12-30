@@ -1,10 +1,9 @@
 program test
 
-int b b, e;
-
-class vsdeda re {
-    static int a,,;
-}
+int a;
+const int a = 2;
 
 {
+     //comment commmenttttttt
+     int main () {}
 }
