@@ -4,8 +4,10 @@ import ast.*;
 
 parser code {:
 
-	Logger log = Logger.getLogger(getClass());
-   
+	private final Logger log = Logger.getLogger(getClass());
+	private boolean errorDetected = false;
+
+	public boolean getError() { return errorDetected; }
 
     public void report_fatal_error(String message, Object info) throws java.lang.Exception {
       done_parsing();
@@ -21,6 +23,7 @@ parser code {:
     }
 
     public void report_error(String message, Object info) {
+        errorDetected = true;
     	StringBuilder msg = new StringBuilder(message); 
     	if (info instanceof Symbol)
             msg.append (" on line ").append(((Symbol)info).left);
@@ -49,10 +52,10 @@ terminal Integer NUMCONST;
 terminal String IDENT;
 
 nonterminal ConstDecl, ConstDeclList, ConstType, VarDeclList, VarDecl, VarType, ArrayDeclaration;
-nonterminal DeclarationList, NamespaceList, Namespace;
-nonterminal MethodDeclList, MethodDecl, MethType, FormParList, FormParam, LocalVarList, FormPars;
-nonterminal StatementList, DesignatorStatement, Statement, Designator, DesignatorSuffix, DesignatorBase, DesignatorList;
-nonterminal ClassDecl, ClassMethods, ClassExtends, ClassStaticVars, ClassStaticInitializers, ClassStaticInitializerList, ClassStaticInitializer;
+nonterminal DeclarationList, NamespaceList, Namespace, NamespaceInit;
+nonterminal MethodDeclList, MethodDecl, FormParList, FormParam, LocalVarList, FormPars;
+nonterminal StatementList, DesignatorStatement, Statement, DesignatorList;
+nonterminal ClassDecl, ClassMethods, ClassStaticVars, ClassStaticInitializers, ClassStaticInitializerList, ClassStaticInitializer;
 nonterminal ClassVarList, ClassVarType, ClassStaticVar;
 
 nonterminal Expr, Term, Factor, ActualPars;
@@ -62,8 +65,8 @@ nonterminal ForHeader, ForList, ForCondition, AssignList;
 
 nonterminal AssignOp, RelOp, AddOp, MulOp;
 
-nonterminal rs.etf.pp1.symboltable.concepts.Obj Program, ProgramName, ConstVals;
-nonterminal rs.etf.pp1.symboltable.concepts.Struct Type;
+nonterminal rs.etf.pp1.symboltable.concepts.Obj Program, ProgramName, ConstVals, MethodName, Designator, ClassName;
+nonterminal rs.etf.pp1.symboltable.concepts.Struct Type, MethType;
 
 precedence left ELSE;
 
@@ -92,13 +95,13 @@ VarType ::= (VarTypeSingle) Type VarDeclList SEMI
 
 ConstType ::= (ConstType) CONST Type ConstDeclList SEMI;
 
-ClassDecl ::= (ClassDecl) CLASS IDENT:name ClassExtends LBRACE ClassStaticVars ClassStaticInitializers ClassVarList ClassMethods RBRACE;
+ClassDecl ::= (ClassDecl) CLASS ClassName LBRACE ClassStaticVars ClassStaticInitializers ClassVarList ClassMethods RBRACE;
 
-ClassExtends ::= (ClassExtendsType) EXTENDS Type
+ClassName ::= (ClassNameExtends) IDENT:name EXTENDS Type
             |
-            (ClassExtendsError) error:l {: parser.report_error("Error during class declaration, recovery until '{'", lleft); :}
+            (ClassNameError) error:l {: parser.report_error("Error during class declaration, recovery until '{'", lleft); :}
             |
-            (ClassExtendsEmpty) /* epsilon */
+            (ClassNameIdent) IDENT:name
             ;
 
 ClassStaticVars ::= (ClassStaticVarsSingle) ClassStaticVars ClassStaticVar
@@ -130,7 +133,9 @@ MethodDeclList ::= (MethodDeclListList) MethodDeclList MethodDecl
             (MethodDeclListEmpty) /* epsilon */
             ;
 
-MethodDecl ::= (MethodDecl) MethType IDENT:name LPAREN FormPars RPAREN LocalVarList LBRACE StatementList RBRACE;
+MethodDecl ::= (MethodDecl) MethodName LPAREN FormPars RPAREN LocalVarList LBRACE StatementList RBRACE;
+
+MethodName ::= (MethodName) MethType IDENT:name;
 
 ClassVarList ::= (ClassVarListList) ClassVarList ClassVarType
             |
@@ -231,18 +236,13 @@ DesignatorList ::= (DesignatorListList) DesignatorList Designator COMMA
             (DesignatorListEmpty) /* epsilon */
             ;
 
-Designator ::= (Designator) DesignatorBase DesignatorSuffix;
-
-DesignatorBase ::= (DesignatorBaseNamespace) IDENT COLON COLON IDENT
+Designator ::= (DesignatorSuffixDot) Designator DOT IDENT:var
             |
-            (DesignatorBaseIdent) IDENT
-            ;
-
-DesignatorSuffix ::= (DesignatorSuffixDot) DesignatorSuffix DOT IDENT
+            (DesignatorSuffixArray) Designator LSQUARE Expr RSQUARE
             |
-            (DesignatorSuffixArray) DesignatorSuffix LSQUARE Expr RSQUARE
+            (DesignatorBaseIdent) IDENT:var
             |
-            (DesignatorSuffixEmpty) /* epsilon */
+            (DesignatorBaseNamespace) IDENT:nameSpace COLON COLON IDENT:var
             ;
 
 FormPars ::= (FormParsList) FormParList
@@ -265,7 +265,9 @@ FormParam ::= (FormParamSingle) Type IDENT:param ArrayDeclaration
             (FormParamError) error:l {: parser.report_error("Error found in Formal parameter declaration, recovery until ')'", lleft); :}
             ;
 
-Namespace ::= (Namespace) NAMESPACE IDENT LBRACE DeclarationList LBRACE MethodDeclList RBRACE RBRACE;
+Namespace ::= (Namespace) NamespaceInit LBRACE DeclarationList LBRACE MethodDeclList RBRACE RBRACE;
+
+NamespaceInit ::= (NamespaceInit) NAMESPACE IDENT:name;
 
 VarDeclList ::= (VarDeclListList) VarDeclList COMMA VarDecl
             |

@@ -49,6 +49,10 @@ public class Main {
 			// ispis sintaksnog stabla
 			log.info("\n" + prog.toString(""));
 			log.info("===================================");
+			if(p.getError()) {
+				log.info("Syntax errors detected, aborting.");
+				return;
+			}
 			initTab();
 			Visitor semanticAnalyzer = new SemanticAnalyzer();
 			prog.traverseBottomUp(semanticAnalyzer);

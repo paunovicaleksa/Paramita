@@ -9,10 +9,15 @@ public class SemanticAnalyzer extends VisitorAdaptor {
     private final Logger logger = Logger.getLogger(SemanticAnalyzer.class);
     private boolean error = false;
     private Obj currentType;
+    private String currentNamespace = null;
+    private Obj currentMethod = null;
+    private Obj currentClass = null;
+    private boolean returnFound = false;
 
     public boolean isError() {
         return error;
     }
+
 
     public void reportError(String message, SyntaxNode info) {
         error = true;
@@ -39,7 +44,8 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 
     @Override
     public void visit(Program program) {
-        /* close scope? */
+        Tab.chainLocalSymbols(program.getProgramName().obj);
+        Tab.closeScope();
     }
 
     @Override
@@ -66,20 +72,22 @@ public class SemanticAnalyzer extends VisitorAdaptor {
         currentType = type;
     }
 
+    /* TODO:Local var support */
     @Override
     public void visit(VarDeclSingle varDeclSingle) {
         if(currentType == null) return;
-        String varName = varDeclSingle.getVar();
+
+        String namePrefix = currentNamespace !=null? currentNamespace + "::" : "";
+        String addName = namePrefix + varDeclSingle.getVar();
         /* searches in all scopes, i only need to find local scope same name? */
-        Obj oldSym = Tab.find(varName);
-        Obj newSym = Tab.insert(Obj.Var, varName, currentType.getType());
-        /* should i use equals? */
-        if(newSym.equals(oldSym)) {
-            reportError("Name already declared", varDeclSingle);
+        Obj oldObj = Tab.find(addName);
+        Obj newObj = Tab.insert(Obj.Var, addName, currentType.getType());
+        if(newObj.equals(oldObj)) {
+            reportError("Error declaring variable " + varDeclSingle.getVar(), varDeclSingle);
             return;
         }
 
-        reportInfo("Variable declared", varDeclSingle);
+        reportInfo("Variable declared: " + newObj.getName(), varDeclSingle);
     }
 
     @Override
@@ -107,6 +115,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
         charConst.obj = new Obj(Obj.Con, "constval", Tab.charType, charConst.getCharVal(), 0);
     }
 
+    /* TODO:Local var support */
     @Override
     public void visit(ConstDecl constDecl) {
         if(currentType == null) return;
@@ -115,20 +124,132 @@ public class SemanticAnalyzer extends VisitorAdaptor {
             reportError("Types not matching", constDecl);
             return;
         }
-        /* check if name exists already? */
-        Obj oldSym = Tab.find(constDecl.getName());
-        Obj newSym = Tab.insert(Obj.Con, constDecl.getName(), currentType.getType());
-        /* should i use equals? */
-        if(newSym.equals(oldSym)) {
-            reportError("Name already declared", constDecl);
+
+        String namePrefix = currentNamespace !=null? currentNamespace + "::" : "";
+        String addName = namePrefix + constDecl.getName();
+        /* searches in all scopes, i only need to find local scope same name? */
+        Obj oldObj = Tab.find(addName);
+        Obj newObj = Tab.insert(Obj.Con, addName, currentType.getType());
+        if(newObj.equals(oldObj)) {
+            reportError("Error declaring variable " + addName, constDecl);
             return;
         }
 
-        reportInfo("Constant declared", constDecl);
+        newObj.setAdr(constDecl.getConstVals().obj.getAdr());
+        reportInfo("Constant declared " + newObj.getName(), constDecl);
     }
 
     @Override
     public void visit(ConstType constType) {
         currentType = null;
+    }
+
+    /* TODO:Local var support */
+    @Override
+    public void visit(ClassNameIdent classNameIdent) {
+        String namePrefix = currentNamespace !=null? currentNamespace + "::" : "";
+        String addName = namePrefix + classNameIdent.getName();
+        /* searches in all scopes, i only need to find local scope same name? */
+        Obj oldObj = Tab.find(addName);
+        Obj newObj = Tab.insert(Obj.Type, addName, new Struct(Struct.Class));
+        if(newObj.equals(oldObj)) {
+            reportError("Error declaring class " + addName, classNameIdent);
+            return;
+        }
+
+        currentClass = classNameIdent.obj = newObj;
+        Tab.openScope();
+        reportInfo("Class declared " + addName, classNameIdent);
+    }
+
+    @Override
+    public void visit(ClassNameExtends classNameExtends) {
+
+    }
+
+    @Override
+    public void visit(ClassDecl classDecl) {
+        if (currentClass == null) {
+            return;
+        }
+
+        Tab.chainLocalSymbols(classDecl.getClassName().obj);
+        Tab.closeScope();
+        currentMethod = null;
+
+    }
+    @Override
+    public void visit(NamespaceInit namespaceInit) {
+        currentNamespace = namespaceInit.getName();
+        reportInfo("Opening namespace " + currentNamespace, namespaceInit);
+    }
+
+    @Override
+    public void visit(Namespace namespace) {
+        currentNamespace = null;
+        reportInfo("Closing namespace " + namespace.getNamespaceInit().getName(), namespace);
+    }
+
+    @Override
+    /* TODO:Local var support */
+    public void visit(MethodName methodName) {
+        String namePrefix = currentNamespace != null? currentNamespace + "::" : "";
+        String name = namePrefix + methodName.getName();
+        Obj oldObj = Tab.find(name);
+        Obj newObj = Tab.insert(Obj.Meth, name, methodName.getMethType().struct);
+        if(newObj.equals(oldObj)) {
+            reportError("Symbol with name " + name + " already declared. Error", methodName);
+            return;
+        }
+        currentMethod = methodName.obj = newObj;
+        Tab.openScope();
+        reportInfo("Opening method " + name, methodName);
+    }
+
+    @Override
+    public void visit(MethTypeType methTypeType) {
+        methTypeType.struct = methTypeType.getType().struct;
+    }
+
+    @Override
+    public void visit(MethTypeVoid methTypeVoid) {
+        methTypeVoid.struct = Tab.noType;
+    }
+
+    @Override
+    public void visit(MethodDecl methodDecl) {
+        if(currentMethod == null) {
+            return;
+        }
+
+        if(!returnFound && methodDecl.getMethodName().getMethType().struct != Tab.noType) {
+            reportError("Return statetement not found in method " + methodDecl.getMethodName().getName() + " declared", methodDecl);
+            return;
+        }
+
+        Tab.chainLocalSymbols(methodDecl.getMethodName().obj);
+        Tab.closeScope();
+        currentMethod = null;
+        returnFound = false;
+        reportInfo("Closing method", methodDecl);
+    }
+
+    @Override
+    public void visit(StatementReturn statementReturn) {
+        returnFound = true;
+    }
+
+    @Override
+    public void visit(StatementReturnExpr statementReturnExpr) {
+        returnFound = true;
+    }
+
+    @Override
+    public void visit(DesignatorBaseIdent designatorBaseIdent) {
+    }
+
+    @Override
+    public void visit(DesignatorBaseNamespace designatorBaseNamespace) {
+
     }
 }

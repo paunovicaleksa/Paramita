@@ -1,9 +1,28 @@
 program test
 
-int a;
-const int a = 2;
+namespace namae {
+    const int a = 2;
+    class Sofija {
+        {void meth() {} }
+    }
+
+    {
+        void meth() {}
+    }
+}
+
+const int a = 5;
 
 {
-     //comment commmenttttttt
-     int main () {}
+     void meth() {
+     }
+
+     int meth2() {
+        return 5;
+     }
+
+     int main() int a; {
+        a = b;
+        return;
+     }
 }
