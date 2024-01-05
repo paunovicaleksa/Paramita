@@ -51,22 +51,21 @@ terminal char CHARCONST;
 terminal Integer NUMCONST;
 terminal String IDENT;
 
-nonterminal ConstDecl, ConstDeclList, ConstType, VarDeclList, VarDecl, VarType, ArrayDeclaration;
+nonterminal ConstDecl, ConstDeclList, ConstType, VarDeclList, VarDecl, VarType;
 nonterminal DeclarationList, NamespaceList, Namespace, NamespaceInit;
-nonterminal MethodDeclList, MethodDecl, FormParList, FormParam, LocalVarList, FormPars;
+nonterminal MethodDeclList, MethodDecl, FormParList, FormParam, LocalVarList, FormPars, MethodCall;
 nonterminal StatementList, DesignatorStatement, Statement, DesignatorList;
 nonterminal ClassDecl, ClassMethods, ClassStaticVars, ClassStaticInitializers, ClassStaticInitializerList, ClassStaticInitializer;
 nonterminal ClassVarList, ClassVarType, ClassStaticVar;
 
-nonterminal Expr, Term, Factor, ActualPars;
+nonterminal ActualPars;
 
-nonterminal Condition, CondTerm, CondFact;
-nonterminal ForHeader, ForList, ForCondition, AssignList;
+nonterminal ForHeader, ForList, ForCondition, AssignList, ForInit;
 
 nonterminal AssignOp, RelOp, AddOp, MulOp;
 
 nonterminal rs.etf.pp1.symboltable.concepts.Obj Program, ProgramName, ConstVals, MethodName, Designator, ClassName;
-nonterminal rs.etf.pp1.symboltable.concepts.Struct Type, MethType;
+nonterminal rs.etf.pp1.symboltable.concepts.Struct Type, MethType, Factor, Term, Expr, ArrayDeclaration, CondFact, CondTerm, Condition;
 
 precedence left ELSE;
 
@@ -174,12 +173,14 @@ Statement ::= (StatementDesignatorStatement) DesignatorStatement SEMI
             |
             (StatementPrintNumber) PRINT LPAREN Expr COMMA NUMCONST:number SEMI
             |
-            (StatementFor) FOR LPAREN ForHeader RPAREN Statement
+            (StatementFor) ForHeader Statement
             |
             (StatementStatementList) LBRACE StatementList RBRACE
             ;
 
-ForHeader ::= (ForHeader) ForList SEMI ForCondition SEMI ForList;
+ForHeader ::= (ForHeader) ForInit LPAREN ForList SEMI ForCondition SEMI ForList RPAREN;
+
+ForInit ::= (ForInit) FOR;
 
 ForList ::= (ForListSingle) AssignList
             |
@@ -217,17 +218,19 @@ DesignatorStatement ::= (DesignatorStatementAssignExpr) Designator AssignOp Expr
             |
             (DesignatorStatementError) error:l {: parser.report_error("Error found in designator statement, recovery until ';'", lleft); :}
             |
-            (DesignatorStatementCall) Designator LPAREN ActualPars RPAREN
-            |
-            (DesignatorStatementCallNoPars) Designator LPAREN RPAREN
+            (DesignatorStatementCall) Designator MethodCall
             |
             (DesignatorStatementIncrement) Designator INCREMENT
             |
             (DesignatorStatementDecrement) Designator DECREMENT
             |
-            (DesignatorStatementSquare) LSQUARE DesignatorList MUL Designator RSQUARE ASSIGN Designator
+            (DesignatorStatementUnpack) LSQUARE DesignatorList MUL Designator RSQUARE ASSIGN Designator
             ;
 
+MethodCall ::= (MethodCallPars) LPAREN ActualPars RPAREN
+            |
+            (MethodCallNoPars) LPAREN RPAREN
+            ;
 
 DesignatorList ::= (DesignatorListList) DesignatorList Designator COMMA
             |
@@ -319,15 +322,9 @@ Term ::= (TermFactor) Factor
 
 Factor ::= (FactorDesignator) Designator
             |
-            (FactorCall) Designator LPAREN ActualPars RPAREN
+            (FactorCall) Designator MethodCall
             |
-            (FactorCallNoPars) Designator LPAREN RPAREN
-            |
-            (FactorNumconst) NUMCONST:numberConstant
-            |
-            (FactorBoolconst) BOOLCONST:boolConstant
-            |
-            (FactorCharconst) CHARCONST:charConstant
+            (FactorConstVals) ConstVals
             |
             (FactorNewArray) NEW Type LSQUARE Expr RSQUARE
             |

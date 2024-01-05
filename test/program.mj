@@ -1,28 +1,34 @@
 program test
 
-namespace namae {
-    const int a = 2;
-    class Sofija {
-        {void meth() {} }
+namespace nmpsp {
+    const int b = 3, c = 5;
+    int a;
+
+    class Katrina{
+       {
+            int meth() { return 1; }
+       }
     }
 
     {
-        void meth() {}
+        void met() {}
+        void meth() int a; {
+        }
     }
 }
 
-const int a = 5;
+int b;
+int m[];
+int vada[];
+
+class Katrina { {
+    void waterloo(int b[]) {}
+}}
 
 {
-     void meth() {
-     }
-
-     int meth2() {
-        return 5;
-     }
-
-     int main() int a; {
-        a = b;
-        return;
-     }
+        void waterloo(int b[]) {}
+        int meth(int a, int b, int c, bool d) {
+            m = null;
+            return 5;
+        }
 }

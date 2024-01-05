@@ -13,8 +13,10 @@ import org.apache.log4j.xml.DOMConfigurator;
 import ast.Program;
 import rs.etf.pp1.symboltable.concepts.Obj;
 import rs.etf.pp1.symboltable.concepts.Struct;
+import rs.etf.pp1.symboltable.visitors.DumpSymbolTableVisitor;
 import util.Log4JUtils;
 import rs.etf.pp1.symboltable.*;
+import util.semantics.TabExt;
 
 public class Main {
 
@@ -23,11 +25,8 @@ public class Main {
 		Log4JUtils.instance().prepareLogFile(Logger.getRootLogger());
 	}
 
-	public static final Struct boolType = new Struct(Struct.Bool);
-
 	private static void initTab() {
-		Tab.init();
-		Tab.insert(Obj.Type, "bool", boolType);
+		TabExt.init();
 	}
 	
 	public static void main(String[] args) throws Exception {
@@ -57,6 +56,8 @@ public class Main {
 			Visitor semanticAnalyzer = new SemanticAnalyzer();
 			prog.traverseBottomUp(semanticAnalyzer);
 			// ispis prepoznatih programskih konstrukcija
+			DumpSymbolTableVisitor dumpSymbolTableVisitor = new DumpSymbolTableVisitor();
+			TabExt.dump(dumpSymbolTableVisitor);
 		}
 		finally {
 			if (br != null) try { br.close(); } catch (IOException e1) { log.error(e1.getMessage(), e1); }
