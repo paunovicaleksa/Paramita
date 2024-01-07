@@ -5,14 +5,24 @@ namespace nmpsp {
     int a;
 
     class Katrina{
+        int a, b, c;
        {
-            int meth() { return 1; }
+            int meth(int a, int b) { return 1; }
        }
+    }
+
+    class Oliveira extends Katrina {
+        {
+            void memo() {
+                meth(1, 2);
+            }
+        }
     }
 
     {
         void met() {}
-        void meth() int a; {
+        void meth() {
+            met();
         }
     }
 }
@@ -21,14 +31,9 @@ int b;
 int m[];
 int vada[];
 
-class Katrina { {
-    void waterloo(int b[]) {}
-}}
-
 {
         void waterloo(int b[]) {}
-        int meth(int a, int b, int c, bool d) {
-            m = null;
-            return 5;
+        int meth(int a, int b, int c, bool d) nmpsp::Katrina nmpsp_kat; {
+            return 0;
         }
 }

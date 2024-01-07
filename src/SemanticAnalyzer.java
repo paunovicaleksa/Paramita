@@ -46,6 +46,17 @@ public class SemanticAnalyzer extends VisitorAdaptor {
                 (currentNamespace != null && TabExt.find(currentNamespace + "::" + name).getKind() == Obj.Type);
     }
 
+    private String classDeclCheck(String name, SyntaxNode node) {
+        if(TabExt.find(name) != TabExt.noObj ||
+                currentNamespace!= null && TabExt.find(currentNamespace + "::" + name) != TabExt.noObj) {
+            reportError("Class declaration " + name + " masks another name", node);
+            return null;
+        }
+
+        name = currentNamespace == null? name : currentNamespace + "::" + name;
+        return name;
+    }
+
     @Override
     public void visit(ProgramName programName) {
         programName.obj = TabExt.insert(Obj.Prog, programName.getName(), TabExt.noType);
@@ -187,15 +198,12 @@ public class SemanticAnalyzer extends VisitorAdaptor {
     @Override
     public void visit(ClassNameIdent classNameIdent) {
         Obj newObj;
-        String name = classNameIdent.getName();
 
-        if(TabExt.find(name) != TabExt.noObj ||
-                currentNamespace!= null && TabExt.find(currentNamespace + "::" + name) != TabExt.noObj) {
-            reportError("Class declaration " + classNameIdent.getName() + " masks another name", classNameIdent);
+        String name = classDeclCheck(classNameIdent.getName(), classNameIdent);
+        if(name == null) {
             return;
         }
 
-        name = currentNamespace == null? name : currentNamespace + "::" + name;
         /* same as with constants */
         newObj = TabExt.insert(Obj.Type, name, new StructExt(Struct.Class));
         currentClass = classNameIdent.obj = newObj;
@@ -205,7 +213,49 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 
     @Override
     public void visit(ClassNameExtends classNameExtends) {
+        Obj newObj;
+        Struct parentClass;
 
+        String name = classDeclCheck(classNameExtends.getName(), classNameExtends);
+        if(name == null) {
+            currentType = null;
+            return;
+        }
+
+        /* checks for name in TYPE node, see if it works inside a namespace(it should) */
+        if(currentType == null) {
+            reportError("Parent class not found", classNameExtends);
+            return;
+        }
+
+        parentClass = currentType.getType();
+        if(parentClass.getKind() != Struct.Class) {
+            reportError("Cannot inherit a non-class type", classNameExtends);
+            currentType = null;
+            return;
+        }
+
+        newObj = TabExt.insert(Obj.Type, name, new StructExt(Struct.Class));
+        newObj.getType().setElementType(parentClass);
+        currentClass = classNameExtends.obj = newObj;
+        currentType = null;
+        TabExt.openScope();
+        for(Obj o : parentClass.getMembers()) {
+            /* better copy i guess, same with methods */
+            Obj addObj = new Obj(o.getKind(), o.getName(), o.getType(), o.getAdr(), o.getLevel());
+            TabExt.currentScope.addToLocals(addObj);
+            /* copy everything. (DB slides) */
+            if(addObj.getKind() == Obj.Meth) {
+                TabExt.openScope();
+                for(Obj local : o.getLocalSymbols()) {
+                    Obj addLocal = new Obj(local.getKind(), local.getName(), local.getType(), local.getAdr(), local.getLevel());
+                    TabExt.currentScope.addToLocals(addLocal);
+                }
+                TabExt.chainLocalSymbols(addObj);
+                TabExt.closeScope();
+            }
+        }
+        reportInfo("Class declared " + name, classNameExtends);
     }
 
     @Override
@@ -214,7 +264,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
             return;
         }
 
-        TabExt.chainLocalSymbols(classDecl.getClassName().obj);
+        TabExt.chainLocalSymbols(currentClass.getType());
         TabExt.closeScope();
         currentMethod = null;
         currentClass = null;
@@ -476,7 +526,10 @@ public class SemanticAnalyzer extends VisitorAdaptor {
             return;
         }
 
-        if(!designator.obj.getType().compatibleWith(designatorStatementAssignExpr.getExpr().struct)) {
+        Struct designatorStruct = designator.obj.getType();
+        Struct exprStruct = designatorStatementAssignExpr.getExpr().struct;
+
+        if(!exprStruct.assignableTo(designatorStruct)){
             reportError("Types not compatible", designatorStatementAssignExpr);
             return;
         }

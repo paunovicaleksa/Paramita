@@ -25,7 +25,7 @@ public class TabExt extends Tab {
 
         universe.addToLocals(new Obj(Obj.Type, "int", intType));
         universe.addToLocals(new Obj(Obj.Type, "char", charType));
-        universe.addToLocals(new Obj(Obj.Type, "bool", boolType, 0, 0));
+        universe.addToLocals(new Obj(Obj.Type, "bool", boolType));
         universe.addToLocals(new Obj(Obj.Con, "eol", charType, 10, 0));
         universe.addToLocals(new Obj(Obj.Con, "null", nullType, 0, 0));
 
@@ -71,6 +71,7 @@ public class TabExt extends Tab {
 
     public static boolean checkParams(Obj meth, ArrayList<Struct> paramList) {
         if(meth.getKind() != Obj.Meth || meth.getLevel() != paramList.size()) {
+            System.out.println("issue is here");
             return false;
         }
 

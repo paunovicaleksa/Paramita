@@ -17,11 +17,28 @@ public class StructExt extends Struct {
         super(kind, members);
     }
 
+    public boolean isSuperClass(Struct p) {
+        /* probably smth like this */
+        for(Struct t = this; t != null; t = t.getElemType()) {
+            if(t == p) return true;
+        }
+
+        return  false;
+    }
+
+    /* override entirely, super assignableTo uses Tab.noType etc. */
     @Override
     public boolean assignableTo(Struct dest) {
-        System.out.println("Hello from new struct");
+        if(getKind() == Struct.Class && dest.getKind() == Struct.Class) {
+            return this == TabExt.nullType || isSuperClass(dest);
+        }
 
-        return super.assignableTo(dest);
+        /* equals checks basic array case */
+        return 	this.equals(dest)
+                ||
+                (this == TabExt.nullType && dest.getKind() == Array)
+                ||
+                (getKind() == Array && dest.getKind() == Array && dest.getElemType() == TabExt.noType);
     }
 
     @Override
