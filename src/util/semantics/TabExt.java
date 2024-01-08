@@ -29,28 +29,31 @@ public class TabExt extends Tab {
         universe.addToLocals(new Obj(Obj.Con, "eol", charType, 10, 0));
         universe.addToLocals(new Obj(Obj.Con, "null", nullType, 0, 0));
 
-        universe.addToLocals(chrObj = new Obj(Obj.Meth, "chr", charType, 0, 1));
+        universe.addToLocals(chrObj = new Obj(Obj.Meth, "chr", charType, 0, 0));
         {
             openScope();
             currentScope.addToLocals(new Obj(Obj.Var, "i", intType, 0, 1));
             chrObj.setLocals(currentScope.getLocals());
+            chrObj.setFpPos(1);
             closeScope();
         }
 
-        universe.addToLocals(ordObj = new Obj(Obj.Meth, "ord", intType, 0, 1));
+        universe.addToLocals(ordObj = new Obj(Obj.Meth, "ord", intType, 0, 0));
         {
             openScope();
             currentScope.addToLocals(new Obj(Obj.Var, "ch", charType, 0, 1));
             ordObj.setLocals(currentScope.getLocals());
+            ordObj.setFpPos(1);
             closeScope();
         }
 
 
-        universe.addToLocals(lenObj = new Obj(Obj.Meth, "len", intType, 0, 1));
+        universe.addToLocals(lenObj = new Obj(Obj.Meth, "len", intType, 0, 0));
         {
             openScope();
             currentScope.addToLocals(new Obj(Obj.Var, "arr", new StructExt(Struct.Array, noType), 0, 1));
             lenObj.setLocals(currentScope.getLocals());
+            lenObj.setFpPos(1);
             closeScope();
         }
     }
@@ -70,8 +73,7 @@ public class TabExt extends Tab {
     }
 
     public static boolean checkParams(Obj meth, ArrayList<Struct> paramList) {
-        if(meth.getKind() != Obj.Meth || meth.getLevel() != paramList.size()) {
-            System.out.println("issue is here");
+        if(meth.getKind() != Obj.Meth || meth.getFpPos() != paramList.size()) {
             return false;
         }
 

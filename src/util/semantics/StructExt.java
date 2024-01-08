@@ -1,10 +1,24 @@
 package util.semantics;
 
 import rs.etf.pp1.symboltable.Tab;
+import rs.etf.pp1.symboltable.concepts.Obj;
 import rs.etf.pp1.symboltable.concepts.Struct;
 import rs.etf.pp1.symboltable.structure.SymbolDataStructure;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class StructExt extends Struct {
+    private Set<Obj> inheritedMethods = new HashSet<>();
+
+    public Set<Obj> getInheritedMethods() {
+        return inheritedMethods;
+    }
+
+    public void setInheritedMethods(Set<Obj> inheritedMethods) {
+        this.inheritedMethods = inheritedMethods;
+    }
+
     public StructExt(int kind) {
         super(kind);
     }

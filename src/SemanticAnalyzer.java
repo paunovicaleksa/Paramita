@@ -7,6 +7,8 @@ import util.semantics.StructExt;
 import util.semantics.TabExt;
 
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Set;
 
 public class SemanticAnalyzer extends VisitorAdaptor {
     private final Logger logger = Logger.getLogger(SemanticAnalyzer.class);
@@ -55,6 +57,36 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 
         name = currentNamespace == null? name : currentNamespace + "::" + name;
         return name;
+    }
+
+    private boolean addFormalParam(String param, Struct paramType, SyntaxNode node) {
+        Obj oldObj, newObj;
+        oldObj = TabExt.find(param);
+        newObj = TabExt.insert(Obj.Var, param, paramType);
+        if(newObj.equals(oldObj)) {
+            reportError("Parameter with name " + param + " already declared. Error", node);
+            return false;
+        }
+
+        if(currentClass == null || !((StructExt)currentClass.getType()).getInheritedMethods().contains(currentMethod)) {
+            currentMethod.setFpPos(currentMethod.getFpPos() + 1);
+        }
+
+        return true;
+    }
+
+    private void addThis(Designator designator) {
+        Struct prevType = TabExt.noType;
+        if(designator instanceof DesignatorSuffixDot) {
+            prevType = ((DesignatorSuffixDot) designator).getDesignator().obj.getType();
+        }
+
+        if(prevType.getKind() == StructExt.Class) {
+            paramList.add(0, prevType);
+        } else if(currentClass != null && currentMethod != null &&
+                TabExt.currentScope.getOuter().findSymbol(designator.obj.getName()).equals(designator.obj)) {
+            paramList.add(0, currentClass.getType());
+        }
     }
 
     @Override
@@ -246,13 +278,17 @@ public class SemanticAnalyzer extends VisitorAdaptor {
             TabExt.currentScope.addToLocals(addObj);
             /* copy everything. (DB slides) */
             if(addObj.getKind() == Obj.Meth) {
+                addObj.setFpPos(o.getFpPos());
                 TabExt.openScope();
                 for(Obj local : o.getLocalSymbols()) {
-                    Obj addLocal = new Obj(local.getKind(), local.getName(), local.getType(), local.getAdr(), local.getLevel());
+                    Obj addLocal = new Obj(local.getKind(), local.getName(),
+                            local.getName().equalsIgnoreCase("this")? currentClass.getType() : local.getType(),
+                            local.getAdr(), local.getLevel());
                     TabExt.currentScope.addToLocals(addLocal);
                 }
                 TabExt.chainLocalSymbols(addObj);
                 TabExt.closeScope();
+                ((StructExt)currentClass.getType()).getInheritedMethods().add(addObj);
             }
         }
         reportInfo("Class declared " + name, classNameExtends);
@@ -291,15 +327,36 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 
         String name = (currentNamespace != null && currentClass == null)? currentNamespace + "::" + methodName.getName() : methodName.getName();
         oldObj = TabExt.find(name);
-        newObj = TabExt.insert(Obj.Meth, name, methodName.getMethType().struct);
-        if(newObj.equals(oldObj)) {
-            reportError("Symbol with name " + name + " already exists in this scope. Error", methodName);
-            return;
+        /* override method, since it was found in current scope */
+        if(currentClass != null && oldObj.getLevel() == 1 && oldObj.getKind() == Obj.Meth) {
+            /* method already redefined */
+            Set<Obj> inheritedMethods = ((StructExt)currentClass.getType()).getInheritedMethods();
+            if(!inheritedMethods.contains(oldObj)) {
+                reportError("Symbol with name " + name + " already exists in this scope. Error", methodName);
+                return;
+            }
+
+            if(!oldObj.getType().equals(methodName.getMethType().struct)) {
+                reportError("Return type not matching with parent class method " + methodName.getName(), methodName);
+                return;
+            }
+
+            currentMethod = methodName.obj = oldObj;
+        } else {
+            /* insert new method */
+            newObj = TabExt.insert(Obj.Meth, name, methodName.getMethType().struct);
+            if(newObj.equals(oldObj)) {
+                reportError("Symbol with name " + name + " already exists in this scope. Error", methodName);
+                return;
+            }
+
+            currentMethod = methodName.obj = newObj;
+            currentMethod.setFpPos(0);
         }
 
-        currentMethod = methodName.obj = newObj;
         currentType = null;
         TabExt.openScope();
+        if(currentClass != null) addFormalParam("this", currentClass.getType(), methodName);
         reportInfo("Opening method " + name + " level " + currentMethod.getLevel(), methodName);
     }
 
@@ -325,33 +382,61 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 
         TabExt.chainLocalSymbols(currentMethod);
         TabExt.closeScope();
+        if(currentClass != null) {
+            ((StructExt)currentClass.getType()).getInheritedMethods().remove(currentMethod);
+        }
         currentMethod = null;
         returnFound = false;
         reportInfo("Closing method", methodDecl);
     }
 
     @Override
+    public void visit(FormParsEmpty formParsEmpty) {
+        if(currentClass != null) {
+            Set<Obj> inheritedMethods = ((StructExt)currentClass.getType()).getInheritedMethods();
+            if(inheritedMethods.contains(currentMethod) && currentMethod.getFpPos() != 1) {
+                reportError("Cannot match formal parameters for method override.", formParsEmpty);
+            }
+        }
+    }
+
+    @Override
+    public void visit(FormParsList formParsList) {
+        if(currentClass != null && ((StructExt)currentClass.getType()).getInheritedMethods().contains(currentMethod)) {
+           /* check number and types of parameters */
+            if(TabExt.currentScope().getnVars() != currentMethod.getFpPos()) {
+                reportError("Cannot match formal parameters for method override.", formParsList);
+            }
+
+            for(Iterator<Obj> iteratorMeth = currentMethod.getLocalSymbols().iterator(),
+                iteratorScope = TabExt.currentScope.getLocals().symbols().iterator();
+                iteratorScope.hasNext() && iteratorMeth.hasNext();) {
+                Obj methParam = iteratorMeth.next();
+                Obj scopeParam = iteratorScope.next();
+                if(!methParam.getType().equals(scopeParam.getType())) {
+                    reportError("Cannot match formal parameters for method override.", formParsList);
+                    return;
+                }
+            }
+        }
+    }
+
+    @Override
     public void visit(FormParamSingle formParamSingle) {
         if(currentMethod == null) return;
 
-        Obj oldObj, newObj;
-
         if(checkType(formParamSingle.getParam())) {
-            reportError("Method declaration " + formParamSingle.getParam() + " masks type name", formParamSingle);
+            reportError("Parameter declaration " + formParamSingle.getParam() + " masks type name", formParamSingle);
             return;
         }
 
         String name = formParamSingle.getParam();
-        oldObj = TabExt.find(name);
-        newObj = TabExt.insert(Obj.Var, name, formParamSingle.getArrayDeclaration().struct);
-        if(newObj.equals(oldObj)) {
-            reportError("Parameter with name " + name + " already declared. Error", formParamSingle);
+        if(!addFormalParam(name, formParamSingle.getType().struct, formParamSingle)) {
             return;
         }
 
-        currentMethod.setLevel(currentMethod.getLevel() + 1);
         currentType = null;
-        reportInfo("Parameter " + name + " declared.", formParamSingle);
+        reportInfo("Parameter " + name + " declared. ", formParamSingle);
     }
 
     @Override
@@ -364,9 +449,9 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 
     @Override
     public void visit(StatementReturnExpr statementReturnExpr) {
+        if(currentMethod == null) return;
         returnFound = true;
-        /* todo:equals might be a bad choice here, assignable to would be better because of classes */
-        if(!currentMethod.getType().equals(statementReturnExpr.getExpr().struct)) {
+        if(!statementReturnExpr.getExpr().struct.assignableTo(currentMethod.getType())) {
             reportError("Invalid return statement.", statementReturnExpr);
         }
     }
@@ -473,6 +558,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
             reportError("Designator not found " + designatorBaseNamespace.getVar(), designatorBaseNamespace);
             return;
         }
+
         reportInfo("Caught designator " + designatorBaseNamespace.getVar(), designatorBaseNamespace);
     }
 
@@ -494,6 +580,38 @@ public class SemanticAnalyzer extends VisitorAdaptor {
         }
 
         designatorSuffixArray.obj = new Obj(Obj.Elem, designator.obj.getName(), designatorSuffixArray.getDesignator().obj.getType().getElemType());
+    }
+
+    @Override
+    /* i only need to grab the type and search for the field, since this only exists for classes */
+    public void visit(DesignatorSuffixDot designatorSuffixDot) {
+        Obj designatorObj = designatorSuffixDot.getDesignator().obj;
+        if(designatorObj.getType().getKind() != StructExt.Class) {
+            reportError("Left side designator must be a type.", designatorSuffixDot);
+            designatorSuffixDot.obj = TabExt.noObj;
+            return;
+        }
+
+        /* this used can only be used in methods, so search outer scope for this. */
+        if(currentClass != null && designatorObj.getType().equals(currentClass.getType())) {
+            designatorSuffixDot.obj = TabExt.currentScope.getOuter().findSymbol(designatorSuffixDot.getVar());
+            if(designatorSuffixDot.obj != null) {
+                reportInfo("Caught designator " + designatorSuffixDot.getVar(), designatorSuffixDot);
+                return;
+            }
+        }
+
+        /* find the field */
+        for(Obj field : designatorObj.getType().getMembers()) {
+            if(field.getName().equalsIgnoreCase(designatorSuffixDot.getVar())) {
+                designatorSuffixDot.obj = field;
+                reportInfo("Caught designator " + designatorSuffixDot.getVar(), designatorSuffixDot);
+                return;
+            }
+        }
+
+        reportError("Could not find designator " + designatorSuffixDot.getVar(), designatorSuffixDot);
+        designatorSuffixDot.obj = TabExt.noObj;
     }
 
     @Override
@@ -540,6 +658,8 @@ public class SemanticAnalyzer extends VisitorAdaptor {
     @Override
     public void visit(DesignatorStatementCall designatorStatementCall) {
         Designator designator = designatorStatementCall.getDesignator();
+        addThis(designator);
+
         if(!TabExt.checkParams(designator.obj, paramList)) {
             reportError("Error calling method " + designator.obj.getName(), designatorStatementCall);
             paramList = null;
@@ -635,10 +755,19 @@ public class SemanticAnalyzer extends VisitorAdaptor {
     }
 
     @Override
+    public void visit(FactorNewTypeNoPars factorNewTypeNoPars) {
+        factorNewTypeNoPars.struct = factorNewTypeNoPars.getType().struct;
+        currentType = null;
+    }
+
+    @Override
     public void visit(FactorCall factorCall) {
         Designator designator = factorCall.getDesignator();
+        addThis(designator);
+        /* if current class is not null, and we are calling a class method. Or if we had a previous designator which is a class */
         if(!TabExt.checkParams(designator.obj, paramList)) {
             reportError("Error calling method " + designator.obj.getName(), factorCall);
+            factorCall.struct = TabExt.noType;
             paramList = null;
             return;
         }
