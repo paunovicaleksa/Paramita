@@ -1,4 +1,5 @@
 import ast.*;
+import rs.etf.pp1.symboltable.Tab;
 import rs.etf.pp1.symboltable.concepts.Obj;
 import rs.etf.pp1.symboltable.concepts.Struct;
 
@@ -18,8 +19,8 @@ public class SemanticAnalyzer extends VisitorAdaptor {
     private Obj currentMethod = null;
     private Obj currentClass = null;
     private boolean returnFound = false;
+    private boolean staticScope = false;
     private int loopDepth = 0;
-    private ArrayList<Struct> paramList = null;
     private ArrayList<Designator> dList = null;
 
     public boolean isError() {
@@ -75,7 +76,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
         return true;
     }
 
-    private void addThis(Designator designator) {
+    private void addThis(Designator designator, ArrayList<Struct> paramList) {
         Struct prevType = TabExt.noType;
         if(designator instanceof DesignatorSuffixDot) {
             prevType = ((DesignatorSuffixDot) designator).getDesignator().obj.getType();
@@ -101,6 +102,11 @@ public class SemanticAnalyzer extends VisitorAdaptor {
     @Override
     public void visit(Program program) {
         program.obj = program.getProgramName().obj;
+        Obj main = TabExt.find("main");
+        if(main == TabExt.noObj || !main.getType().equals(TabExt.noType) || main.getKind() != Obj.Meth) {
+            reportError("Main method not found", program);
+        }
+
         TabExt.chainLocalSymbols(program.obj);
         TabExt.closeScope();
     }
@@ -140,16 +146,29 @@ public class SemanticAnalyzer extends VisitorAdaptor {
     public void visit(VarDeclSingle varDeclSingle) {
         if(currentType == null) return;
 
-        boolean isVar = currentClass == null || currentMethod != null;
         Obj oldObj, newObj;
+        String name;
+        boolean isVar;
 
         if(checkType(varDeclSingle.getVar())){
             reportError("Variable declaration " + varDeclSingle.getVar() + " masks type name", varDeclSingle);
             return;
         }
 
-        String name = (currentNamespace != null && currentClass == null && currentMethod == null)?
-                       currentNamespace + "::" + varDeclSingle.getVar() : varDeclSingle.getVar();
+
+        if(staticScope) {
+            if(currentClass == null) {
+                reportError("Cannot declare static variable outside of class scope", varDeclSingle);
+                return;
+            }
+
+            name = currentClass.getName() + "." + varDeclSingle.getVar();
+            isVar = true;
+        } else {
+            name = (currentNamespace != null && currentClass == null && currentMethod == null)?
+                    currentNamespace + "::" + varDeclSingle.getVar() : varDeclSingle.getVar();
+            isVar = currentClass == null || currentMethod != null;
+        }
 
         oldObj = TabExt.find(name);
         newObj = TabExt.insert(isVar? Obj.Var : Obj.Fld, name, varDeclSingle.getArrayDeclaration().struct);
@@ -239,7 +258,6 @@ public class SemanticAnalyzer extends VisitorAdaptor {
         /* same as with constants */
         newObj = TabExt.insert(Obj.Type, name, new StructExt(Struct.Class));
         currentClass = classNameIdent.obj = newObj;
-        TabExt.openScope();
         reportInfo("Class declared " + name, classNameIdent);
     }
 
@@ -271,27 +289,41 @@ public class SemanticAnalyzer extends VisitorAdaptor {
         newObj.getType().setElementType(parentClass);
         currentClass = classNameExtends.obj = newObj;
         currentType = null;
+        reportInfo("Class declared " + name, classNameExtends);
+    }
+
+    @Override
+    public void visit(StaticOpen staticOpen) {
+        staticScope = true;
+    }
+
+    @Override
+    public void visit(ClassStatics classStatics) {
+        reportInfo("Leaving class statics, whether empty or full!", classStatics);
+        staticScope = false;
         TabExt.openScope();
-        for(Obj o : parentClass.getMembers()) {
-            /* better copy i guess, same with methods */
-            Obj addObj = new Obj(o.getKind(), o.getName(), o.getType(), o.getAdr(), o.getLevel());
-            TabExt.currentScope.addToLocals(addObj);
-            /* copy everything. (DB slides) */
-            if(addObj.getKind() == Obj.Meth) {
-                addObj.setFpPos(o.getFpPos());
-                TabExt.openScope();
-                for(Obj local : o.getLocalSymbols()) {
-                    Obj addLocal = new Obj(local.getKind(), local.getName(),
-                            local.getName().equalsIgnoreCase("this")? currentClass.getType() : local.getType(),
-                            local.getAdr(), local.getLevel());
-                    TabExt.currentScope.addToLocals(addLocal);
+        if(currentClass.getType().getElemType() != null && currentClass.getType().getElemType().getKind() == StructExt.Class) {
+            Struct parentClass = currentClass.getType().getElemType();
+            for(Obj o : parentClass.getMembers()) {
+                /* better copy i guess, same with methods */
+                Obj addObj = new Obj(o.getKind(), o.getName(), o.getType(), o.getAdr(), o.getLevel());
+                TabExt.currentScope.addToLocals(addObj);
+                /* copy everything. (DB slides) */
+                if(addObj.getKind() == Obj.Meth) {
+                    addObj.setFpPos(o.getFpPos());
+                    TabExt.openScope();
+                    for(Obj local : o.getLocalSymbols()) {
+                        Obj addLocal = new Obj(local.getKind(), local.getName(),
+                                local.getName().equals("this")? currentClass.getType() : local.getType(),
+                                local.getAdr(), local.getLevel());
+                        TabExt.currentScope.addToLocals(addLocal);
+                    }
+                    TabExt.chainLocalSymbols(addObj);
+                    TabExt.closeScope();
+                    ((StructExt)currentClass.getType()).getInheritedMethods().add(addObj);
                 }
-                TabExt.chainLocalSymbols(addObj);
-                TabExt.closeScope();
-                ((StructExt)currentClass.getType()).getInheritedMethods().add(addObj);
             }
         }
-        reportInfo("Class declared " + name, classNameExtends);
     }
 
     @Override
@@ -534,8 +566,29 @@ public class SemanticAnalyzer extends VisitorAdaptor {
     }
 
     @Override
+    /* todo:test this, and write tomorrow if needed */
     public void visit(DesignatorBaseIdent designatorBaseIdent) {
         designatorBaseIdent.obj = TabExt.find(designatorBaseIdent.getVar());
+
+        /* see if a local var with the given name exists */
+        if(designatorBaseIdent.obj.getLevel() == 1) {
+            reportInfo("Caught designator " + designatorBaseIdent.obj.getName(), designatorBaseIdent);
+            return;
+        }
+
+        /* see if a static var with the name exists */
+        if(currentClass != null) {
+            String namePrefix =  currentClass.getName() + ".";
+            designatorBaseIdent.obj = TabExt.find(namePrefix + designatorBaseIdent.getVar());
+            if(designatorBaseIdent.obj != TabExt.noObj) {
+                reportInfo("Caught designator " + designatorBaseIdent.obj.getName(), designatorBaseIdent);
+                return;
+            }
+        }
+
+        /* find a global??? var */
+        designatorBaseIdent.obj = TabExt.find(designatorBaseIdent.getVar());
+
         if((designatorBaseIdent.obj == TabExt.noObj)) {
             if(currentNamespace != null) {
                 String namePrefix = currentNamespace + "::";
@@ -548,11 +601,13 @@ public class SemanticAnalyzer extends VisitorAdaptor {
             }
         }
 
-        reportInfo("Caught designator " + designatorBaseIdent.getVar(), designatorBaseIdent);
+        reportInfo("Caught designator " + designatorBaseIdent.obj.getName(), designatorBaseIdent);
+
     }
 
     @Override
     public void visit(DesignatorBaseNamespace designatorBaseNamespace) {
+        /* should return class obj if we are accessing a static */
         designatorBaseNamespace.obj = TabExt.find(designatorBaseNamespace.getNameSpace() + "::" + designatorBaseNamespace.getVar());
         if(designatorBaseNamespace.obj.equals(TabExt.noObj)) {
             reportError("Designator not found " + designatorBaseNamespace.getVar(), designatorBaseNamespace);
@@ -592,7 +647,16 @@ public class SemanticAnalyzer extends VisitorAdaptor {
             return;
         }
 
-        /* this used can only be used in methods, so search outer scope for this. */
+        /* accessing a static variable, probably. */
+        if(designatorObj.getKind() == Obj.Type) {
+            designatorSuffixDot.obj = TabExt.find(designatorObj.getName() + "." + designatorSuffixDot.getVar());
+            if(designatorSuffixDot.obj != null) {
+                reportInfo("Caught designator " + designatorSuffixDot.getVar(), designatorSuffixDot);
+                return;
+            }
+        }
+
+        /* this can only be used in methods, so search outer scope for this. */
         if(currentClass != null && designatorObj.getType().equals(currentClass.getType())) {
             designatorSuffixDot.obj = TabExt.currentScope.getOuter().findSymbol(designatorSuffixDot.getVar());
             if(designatorSuffixDot.obj != null) {
@@ -603,7 +667,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 
         /* find the field */
         for(Obj field : designatorObj.getType().getMembers()) {
-            if(field.getName().equalsIgnoreCase(designatorSuffixDot.getVar())) {
+            if(field.getName().equals(designatorSuffixDot.getVar())) {
                 designatorSuffixDot.obj = field;
                 reportInfo("Caught designator " + designatorSuffixDot.getVar(), designatorSuffixDot);
                 return;
@@ -658,15 +722,13 @@ public class SemanticAnalyzer extends VisitorAdaptor {
     @Override
     public void visit(DesignatorStatementCall designatorStatementCall) {
         Designator designator = designatorStatementCall.getDesignator();
-        addThis(designator);
+        addThis(designator, designatorStatementCall.getMethodCall().arraylist);
 
-        if(!TabExt.checkParams(designator.obj, paramList)) {
+        if(!TabExt.checkParams(designator.obj, designatorStatementCall.getMethodCall().arraylist)) {
             reportError("Error calling method " + designator.obj.getName(), designatorStatementCall);
-            paramList = null;
             return;
         }
 
-        paramList = null;
         reportInfo("Calling method " + designator.obj.getName(), designatorStatementCall);
     }
 
@@ -763,34 +825,38 @@ public class SemanticAnalyzer extends VisitorAdaptor {
     @Override
     public void visit(FactorCall factorCall) {
         Designator designator = factorCall.getDesignator();
-        addThis(designator);
+        addThis(designator, factorCall.getMethodCall().arraylist);
         /* if current class is not null, and we are calling a class method. Or if we had a previous designator which is a class */
-        if(!TabExt.checkParams(designator.obj, paramList)) {
+        if(!TabExt.checkParams(designator.obj, factorCall.getMethodCall().arraylist)) {
             reportError("Error calling method " + designator.obj.getName(), factorCall);
             factorCall.struct = TabExt.noType;
-            paramList = null;
             return;
         }
 
-        paramList = null;
         factorCall.struct = designator.obj.getType();
         reportInfo("Calling method " + designator.obj.getName(), factorCall);
     }
 
     @Override
     public void visit(MethodCallNoPars methodCallNoPars) {
-        paramList = new ArrayList<>();
+        methodCallNoPars.arraylist = new ArrayList<Struct>();
+    }
+
+    @Override
+    public void visit(MethodCallPars methodCallPars) {
+        methodCallPars.arraylist = methodCallPars.getActualPars().arraylist;
     }
 
     @Override
     public void visit(ActualParsSingle actualParsSingle) {
-        paramList = new ArrayList<>();
-        paramList.add(actualParsSingle.getExpr().struct);
+        actualParsSingle.arraylist = new ArrayList<Struct>();
+        actualParsSingle.arraylist.add(actualParsSingle.getExpr().struct);
     }
 
     @Override
     public void visit(ActualParsList actualParsList) {
-        paramList.add(actualParsList.getExpr().struct);
+        actualParsList.arraylist = actualParsList.getActualPars().arraylist;
+        actualParsList.arraylist.add(actualParsList.getExpr().struct);
     }
 
     @Override

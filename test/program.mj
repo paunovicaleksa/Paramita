@@ -4,17 +4,38 @@ namespace nmpsp {
     const int b = 3, c = 5;
     int a;
 
+    class Katrina {
+        static int stat;
+        static {
+            stat++;
+        }
+
+
+        {
+            void m() { stat++; }
+        }
+    }
+
     { }
 }
 
 int b;
 int m[];
 int vada[];
+int stat;
 
 class Katrina{
+    static int stat;
+    static {
+        stat++;
+    }
     int a, b, c;
    {
-        int meth(int m, char f) bool c; { return 0; }
+        int meth(int m, char f) bool c; {
+            stat = m;
+            return 0;
+        }
+
    }
 }
 
@@ -27,12 +48,12 @@ class Oliveira extends Katrina {
             kat = null;
             return this.a;
         }
+
+        int meth1(int a) { return 1; }
+        int meth2(int a, int b) { return 2; }
     }
 }
 
 {
-        void waterloo(int b[]) {}
-        int meth(int a, int b, int c, bool d) Katrina nmpsp_kat; {
-            return nmpsp_kat.a;
-        }
+    void main() Oliveira oli; { oli.meth2(2, oli.meth1(2)); }
 }

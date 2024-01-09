@@ -53,12 +53,10 @@ terminal String IDENT;
 
 nonterminal ConstDecl, ConstDeclList, ConstType, VarDeclList, VarDecl, VarType;
 nonterminal DeclarationList, NamespaceList, Namespace, NamespaceInit;
-nonterminal MethodDeclList, MethodDecl, FormParList, FormParam, LocalVarList, FormPars, MethodCall;
+nonterminal MethodDeclList, MethodDecl, FormParList, FormParam, LocalVarList, FormPars;
 nonterminal StatementList, DesignatorStatement, Statement, DesignatorList;
 nonterminal ClassDecl, ClassMethods, ClassStaticVars, ClassStaticInitializers, ClassStaticInitializerList, ClassStaticInitializer;
-nonterminal ClassVarList, ClassVarType, ClassStaticVar;
-
-nonterminal ActualPars;
+nonterminal ClassVarList, ClassVarType, ClassStaticVar, StaticOpen, ClassStatics;
 
 nonterminal ForHeader, ForList, ForCondition, AssignList, ForInit;
 
@@ -66,6 +64,7 @@ nonterminal AssignOp, RelOp, AddOp, MulOp;
 
 nonterminal rs.etf.pp1.symboltable.concepts.Obj Program, ProgramName, ConstVals, MethodName, Designator, ClassName;
 nonterminal rs.etf.pp1.symboltable.concepts.Struct Type, MethType, Factor, Term, Expr, ArrayDeclaration, CondFact, CondTerm, Condition;
+nonterminal java.util.ArrayList ActualPars, MethodCall;
 
 precedence left ELSE;
 
@@ -94,7 +93,7 @@ VarType ::= (VarTypeSingle) Type VarDeclList SEMI
 
 ConstType ::= (ConstType) CONST Type ConstDeclList SEMI;
 
-ClassDecl ::= (ClassDecl) CLASS ClassName LBRACE ClassStaticVars ClassStaticInitializers ClassVarList ClassMethods RBRACE;
+ClassDecl ::= (ClassDecl) CLASS ClassName LBRACE ClassStatics ClassVarList ClassMethods RBRACE;
 
 ClassName ::= (ClassNameExtends) IDENT:name EXTENDS Type
             |
@@ -103,12 +102,14 @@ ClassName ::= (ClassNameExtends) IDENT:name EXTENDS Type
             (ClassNameIdent) IDENT:name
             ;
 
+ClassStatics ::= (ClassStatics) ClassStaticVars ClassStaticInitializers;
+
 ClassStaticVars ::= (ClassStaticVarsSingle) ClassStaticVars ClassStaticVar
             |
             (ClassStaticVarsEmpty) /* epsilon */
             ;
 
-ClassStaticVar ::= (ClassStaticVar) STATIC ClassVarType;
+ClassStaticVar ::= (ClassStaticVar) StaticOpen ClassVarType;
 
 ClassStaticInitializers ::= (ClassStaticInitializersSingle) ClassStaticInitializerList
             |
@@ -120,7 +121,9 @@ ClassStaticInitializerList ::= (ClassStaticInitializerListSingle) ClassStaticIni
             (ClassStaticInitializerListList) ClassStaticInitializerList ClassStaticInitializer
             ;
 
-ClassStaticInitializer ::= (ClassStaticInitializer) STATIC LBRACE StatementList RBRACE;
+ClassStaticInitializer ::= (ClassStaticInitializer) StaticOpen LBRACE StatementList RBRACE;
+
+StaticOpen ::= (StaticOpen) STATIC;
 
 ClassMethods ::= (ClassMethodsSingle) LBRACE MethodDeclList RBRACE
             |
