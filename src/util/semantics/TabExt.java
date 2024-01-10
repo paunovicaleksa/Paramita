@@ -12,6 +12,7 @@ public class TabExt extends Tab {
     public static final StructExt noType = new StructExt(Struct.None);
     public static final StructExt intType = new StructExt(Struct.Int);
     public static final StructExt charType = new StructExt(Struct.Char);
+    /* todo:problem with code generation, there is a check for Tab.nullType, maybe i dont need this? */
     public static final StructExt nullType = new StructExt(Struct.Class);
     public  static final StructExt boolType = new StructExt(Struct.Bool);
     public static final Obj noObj = new Obj(Obj.Var, "noObj", noType);

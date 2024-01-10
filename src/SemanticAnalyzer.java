@@ -465,7 +465,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
         }
 
         String name = formParamSingle.getParam();
-        if(!addFormalParam(name, formParamSingle.getType().struct, formParamSingle)) {
+        if(!addFormalParam(name, formParamSingle.getArrayDeclaration().struct, formParamSingle)) {
             return;
         }
 
@@ -688,6 +688,11 @@ public class SemanticAnalyzer extends VisitorAdaptor {
     @Override
     public void visit(DesignatorStatementIncrement designatorStatementIncrement) {
         Designator designator = designatorStatementIncrement.getDesignator();
+        if(TabExt.isNotAssignable(designator.obj)) {
+            reportError("Designator not assignable ", designatorStatementIncrement);
+            return;
+        }
+
         if(designator.obj == TabExt.noObj || designator.obj.getType() != TabExt.intType) {
             reportError("Type must be int", designatorStatementIncrement);
             return;
@@ -699,6 +704,11 @@ public class SemanticAnalyzer extends VisitorAdaptor {
     @Override
     public void visit(DesignatorStatementDecrement designatorStatementDecrement) {
         Designator designator = designatorStatementDecrement.getDesignator();
+        if(TabExt.isNotAssignable(designator.obj)) {
+            reportError("Designator not assignable ", designatorStatementDecrement);
+            return;
+        }
+
         if(designator.obj == TabExt.noObj || designator.obj.getType() != TabExt.intType) {
             reportError("Type must be int", designatorStatementDecrement);
             return;
@@ -909,17 +919,6 @@ public class SemanticAnalyzer extends VisitorAdaptor {
        }
 
        exprMinusTerm.struct = TabExt.intType;
-    }
-
-    @Override
-    public void visit(ExprAddopMinus exprAddopMinus) {
-        if(!exprAddopMinus.getTerm().struct.equals(TabExt.intType) || !exprAddopMinus.getExpr().struct.equals(TabExt.intType)) {
-            reportError("Incompatible types ", exprAddopMinus);
-            exprAddopMinus.struct = TabExt.noType;
-            return;
-        }
-
-        exprAddopMinus.struct = TabExt.intType;
     }
 
     @Override

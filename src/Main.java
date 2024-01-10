@@ -1,8 +1,5 @@
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.Reader;
+import java.io.*;
+import java.nio.file.Files;
 
 import ast.Visitor;
 import java_cup.runtime.Symbol;
@@ -16,6 +13,7 @@ import rs.etf.pp1.symboltable.concepts.Struct;
 import rs.etf.pp1.symboltable.visitors.DumpSymbolTableVisitor;
 import util.Log4JUtils;
 import rs.etf.pp1.symboltable.*;
+import util.codegen.CodeExt;
 import util.semantics.TabExt;
 
 public class Main {
@@ -35,7 +33,7 @@ public class Main {
 
 		Reader br = null;
 		try {
-			File sourceCode = new File("test/program.mj");
+			File sourceCode = new File("test/codegentest.mj");
 			log.info("Compiling source file: " + sourceCode.getAbsolutePath());
 			
 			br = new BufferedReader(new FileReader(sourceCode));
@@ -58,6 +56,16 @@ public class Main {
 			// ispis prepoznatih programskih konstrukcija
 			DumpSymbolTableVisitor dumpSymbolTableVisitor = new DumpSymbolTableVisitor();
 			TabExt.dump(dumpSymbolTableVisitor);
+			if(((SemanticAnalyzer)semanticAnalyzer).isError()) {
+				log.error("Semantic errors detected, aborting");
+				return;
+			}
+
+			Visitor codeGenerator = new CodeGenerator();
+			prog.traverseBottomUp(codeGenerator);
+			File f = new File("test/program.obj");
+			if(f.exists()) f.delete();
+			CodeExt.write(Files.newOutputStream(f.toPath()));
 		}
 		finally {
 			if (br != null) try { br.close(); } catch (IOException e1) { log.error(e1.getMessage(), e1); }

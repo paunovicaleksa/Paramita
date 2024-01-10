@@ -1,0 +1,10 @@
+program test
+
+int b;
+
+{
+    void main() int var; {
+        var--;
+        var = 34 + -( 2 * 5  - (-2));
+    }
+}

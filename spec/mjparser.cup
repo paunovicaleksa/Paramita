@@ -314,8 +314,6 @@ Expr ::= (ExprTerm) Term
             (ExprMinusTerm) MINUS Term
             |
             (ExprAddop) Expr AddOp Term
-            |
-            (ExprAddopMinus) Expr AddOp MINUS Term
             ;
 
 Term ::= (TermFactor) Factor

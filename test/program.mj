@@ -30,29 +30,35 @@ class Katrina{
     }
     int a, b, c;
    {
-        int meth(int m, char f) bool c; {
-            stat = m;
-            return 0;
-        }
 
    }
 }
 
+class Nizovi {
+    int niz[];
+}
+
 class Oliveira extends Katrina {
     Katrina kat;
+    Nizovi niz1;
     {
         void memo() { }
 
-        int meth(int a, char f) {
+        int meth(int b[]) {
             Oliveira.stat++;
             return this.a;
         }
 
-        int meth1(int a) { return 1; }
+        int meth1(int a) int b[]; {
+            meth(new int[66]);
+            return 1;
+        }
         int meth2(int a, int b) { return 2; }
     }
 }
 
 {
-    void main() Oliveira oli; { oli.meth2(2, oli.meth1(2)); }
+    void main() Katrina oli; {
+        oli = new Oliveira();
+    }
 }
