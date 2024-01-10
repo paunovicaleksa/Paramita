@@ -10,14 +10,14 @@ import java.util.Set;
 
 public class StructExt extends Struct {
     private Set<Obj> inheritedMethods = new HashSet<>();
-    private Set<Obj> staticVars = new HashSet<>();
+    private String className;
 
-    public Set<Obj> getStaticVars() {
-        return staticVars;
+    public String getClassName() {
+        return className;
     }
 
-    public void setStaticVars(Set<Obj> staticVars) {
-        this.staticVars = staticVars;
+    public void setClassName(String className) {
+        this.className = className;
     }
 
     public Set<Obj> getInheritedMethods() {

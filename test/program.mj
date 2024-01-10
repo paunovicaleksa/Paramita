@@ -22,7 +22,6 @@ namespace nmpsp {
 int b;
 int m[];
 int vada[];
-int stat;
 
 class Katrina{
     static int stat;
@@ -45,7 +44,7 @@ class Oliveira extends Katrina {
         void memo() { }
 
         int meth(int a, char f) {
-            kat = null;
+            Oliveira.stat++;
             return this.a;
         }
 

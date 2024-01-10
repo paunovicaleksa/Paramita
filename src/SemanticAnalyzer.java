@@ -257,6 +257,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 
         /* same as with constants */
         newObj = TabExt.insert(Obj.Type, name, new StructExt(Struct.Class));
+        ((StructExt)newObj.getType()).setClassName(name);
         currentClass = classNameIdent.obj = newObj;
         reportInfo("Class declared " + name, classNameIdent);
     }
@@ -287,6 +288,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 
         newObj = TabExt.insert(Obj.Type, name, new StructExt(Struct.Class));
         newObj.getType().setElementType(parentClass);
+        ((StructExt)newObj.getType()).setClassName(name);
         currentClass = classNameExtends.obj = newObj;
         currentType = null;
         reportInfo("Class declared " + name, classNameExtends);
@@ -578,11 +580,13 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 
         /* see if a static var with the name exists */
         if(currentClass != null) {
-            String namePrefix =  currentClass.getName() + ".";
-            designatorBaseIdent.obj = TabExt.find(namePrefix + designatorBaseIdent.getVar());
-            if(designatorBaseIdent.obj != TabExt.noObj) {
-                reportInfo("Caught designator " + designatorBaseIdent.obj.getName(), designatorBaseIdent);
-                return;
+            for(Struct currentType = currentClass.getType(); currentType != null; currentType = currentType.getElemType()) {
+                String namePrefix =  ((StructExt)currentType).getClassName() + ".";
+                designatorBaseIdent.obj = TabExt.find(namePrefix + designatorBaseIdent.getVar());
+                if(designatorBaseIdent.obj != TabExt.noObj) {
+                    reportInfo("Caught designator " + designatorBaseIdent.obj.getName(), designatorBaseIdent);
+                    return;
+                }
             }
         }
 
@@ -649,10 +653,13 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 
         /* accessing a static variable, probably. */
         if(designatorObj.getKind() == Obj.Type) {
-            designatorSuffixDot.obj = TabExt.find(designatorObj.getName() + "." + designatorSuffixDot.getVar());
-            if(designatorSuffixDot.obj != null) {
-                reportInfo("Caught designator " + designatorSuffixDot.getVar(), designatorSuffixDot);
-                return;
+            for(Struct currentType = designatorObj.getType(); currentType != null; currentType = currentType.getElemType()) {
+                String namePrefix = ((StructExt)currentType).getClassName() + ".";
+                designatorSuffixDot.obj = TabExt.find(namePrefix + designatorSuffixDot.getVar());
+                if(designatorSuffixDot.obj != TabExt.noObj) {
+                    reportInfo("Caught designator " + designatorSuffixDot.getVar(), designatorSuffixDot);
+                    return;
+                }
             }
         }
 
