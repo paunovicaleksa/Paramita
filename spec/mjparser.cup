@@ -58,7 +58,7 @@ nonterminal StatementList, DesignatorStatement, Statement, DesignatorList;
 nonterminal ClassDecl, ClassMethods, ClassStaticVars, ClassStaticInitializers, ClassStaticInitializerList, ClassStaticInitializer;
 nonterminal ClassVarList, ClassVarType, ClassStaticVar, StaticOpen, ClassStatics;
 
-nonterminal ForHeader, ForList, ForCondition, AssignList, ForInit, ElseHeader;
+nonterminal ForHeader, ForList, ForCondition, AssignList, ForInit, ElseHeader, IfHeader, StatementHeader, ForConditionBegin;
 
 nonterminal AssignOp, RelOp, AddOp, MulOp;
 
@@ -158,9 +158,9 @@ StatementList ::= (StatementListList) StatementList Statement
 
 Statement ::= (StatementDesignatorStatement) DesignatorStatement SEMI
             |
-            (StatementIf) IF LPAREN Condition RPAREN Statement
+            (StatementIf) IfHeader LPAREN Condition RPAREN StatementHeader Statement
             |
-            (StatementIfElse) IF LPAREN Condition RPAREN Statement ElseHeader Statement
+            (StatementIfElse) IfHeader LPAREN Condition RPAREN StatementHeader Statement ElseHeader Statement
             |
             (StatementBreak) BREAK SEMI
             |
@@ -181,11 +181,17 @@ Statement ::= (StatementDesignatorStatement) DesignatorStatement SEMI
             (StatementStatementList) LBRACE StatementList RBRACE
             ;
 
+IfHeader ::= (IfHeader) IF;
+
 ElseHeader ::= (ElseHeader) ELSE;
 
-ForHeader ::= (ForHeader) ForInit LPAREN ForList SEMI ForCondition SEMI ForList RPAREN;
+StatementHeader ::= (StatementHeader) /* epsilon */;
+
+ForHeader ::= (ForHeader) ForInit LPAREN ForList SEMI ForConditionBegin ForCondition SEMI ForList RPAREN;
 
 ForInit ::= (ForInit) FOR;
+
+ForConditionBegin ::= (ForConditionBegin) /* epsilon */;
 
 ForList ::= (ForListSingle) AssignList
             |

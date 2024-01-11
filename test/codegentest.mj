@@ -3,19 +3,13 @@ program test
 char baracks;
 
 {
-	void main() int a; {
-	    a = 0;
-	    if(false) {
-	        a = 2;
-	        print('a');
-	    }
-	    else {
-	        if(true) {
-	            a = 3;
-	        } else
-	            a = -5;
-	        print('b');
-	    }
-	    print(a);
+
+    bool truther() { print('t'); return true; }
+    void main() int i; {
+       for(i = 0; truther(); i++) {
+            if(i == 5) break;
+            continue;
+            print('n');
+       }
     }
 }

@@ -1,21 +1,61 @@
 import ast.*;
+import rs.etf.pp1.mj.runtime.Code;
 import rs.etf.pp1.symboltable.concepts.Obj;
 import util.codegen.CodeExt;
 import util.semantics.StructExt;
 import util.semantics.TabExt;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Stack;
 
 public class CodeGenerator extends VisitorAdaptor {
+    enum ConditionType {
+        ForLoop,
+        IfStmnt
+    }
+    ConditionType conditionType = ConditionType.IfStmnt;
     /* jump to else, should eventually be a stack of lists */
-    private Stack<Integer> elsePatches = new Stack<>();
+    private Stack<ArrayList<Integer>> elsePatches = new Stack<>();
     /* patch at the end of if statement */
+    private Stack<ArrayList<Integer>> statementPatches = new Stack<>();
     private Stack<Integer> beyondPatches = new Stack<>();
+    /* for loop stuff */
+    private Stack<Integer> conditionJumps = new Stack<>();
+    private Stack<Integer> statementJumps = new Stack();
+    private Stack<Integer> updationJumps = new Stack<>();
+    private Stack<ArrayList<Integer>> beyondJumps = new Stack<>();
+    private final Map<Class, Integer> relOps = new HashMap<>();
+
+
+    /* i have to patch every && here pretty much, so everything in the list */
+    private void OrCondition(SyntaxNode node) {
+        /* condition || CondTerm, we need a jump here */
+        if(node.getParent() instanceof ConditionList) {
+            /* already checked condition earlier, if we are here, we should jump to the StatementHeader */
+            CodeExt.putJump(0);
+            /* patch every && here, they should not jump to ELSE */
+            for(int fixUp : elsePatches.pop()) {
+                CodeExt.fixup(fixUp);
+            }
+            elsePatches.push(new ArrayList<>());
+            /* for future patching */
+            statementPatches.peek().add(CodeExt.pc - 2);
+        }
+    }
 
     @Override
     public void visit(ProgramName programName) {
         /* init universe scope methods */
         CodeExt.init();
+        /* init some internal structures of the visitor */
+        relOps.put(Equal.class, CodeExt.eq);
+        relOps.put(NotEqu.class, CodeExt.ne);
+        relOps.put(Greater.class, CodeExt.gt);
+        relOps.put(GrEqu.class, CodeExt.ge);
+        relOps.put(Lower.class, CodeExt.lt);
+        relOps.put(LowEqu.class, CodeExt.le);
     }
 
     @Override
@@ -74,7 +114,83 @@ public class CodeGenerator extends VisitorAdaptor {
 
     @Override
     public void visit(StatementIf statementIf) {
-        CodeExt.fixup(elsePatches.pop());
+        for(int fixUp : elsePatches.pop()) {
+            CodeExt.fixup(fixUp);
+        }
+    }
+
+    @Override
+    /* fixup all jumps to the end*/
+    public void visit(StatementFor statementFor) {
+        /* jump to updation part, end of statement, so pop. */
+        CodeExt.putJump(updationJumps.pop());
+
+        for(int fixUp : beyondJumps.pop()) {
+            CodeExt.fixup(fixUp);
+        }
+        conditionJumps.pop();
+    }
+
+    @Override
+    public void visit(StatementBreak statementBreak) {
+        CodeExt.putJump(0);
+        beyondJumps.peek().add(CodeExt.pc - 2);
+    }
+
+    @Override
+    public void visit(StatementContinue statementContinue) {
+        CodeExt.putJump(updationJumps.peek());
+    }
+
+    @Override
+    /* jump to condition check here? */
+    public void visit(ForHeader forHeader) {
+        CodeExt.putJump(conditionJumps.peek());
+        CodeExt.fixup(statementJumps.pop());
+    }
+
+    @Override
+    public void visit(ForInit forInit) {
+        /* used for CondFact, patched at the end? */
+        conditionType = ConditionType.ForLoop;
+        beyondJumps.push(new ArrayList<>());
+    }
+
+    @Override
+    public void visit(ForConditionBegin forConditionBegin) {
+        conditionJumps.push(CodeExt.pc);
+    }
+
+    @Override
+    /* jump to statement? skip the i++ stuff etc. */
+    public void visit(ForConditionSingle forConditionSingle) {
+        CodeExt.putJump(0);
+        statementJumps.push(CodeExt.pc - 2);
+        /* jump address */
+        updationJumps.push(CodeExt.pc);
+    }
+
+    @Override
+    public void visit(ForConditionEmpty forConditionEmpty) {
+        CodeExt.putJump(0);
+        statementJumps.push(CodeExt.pc - 2);
+        /* jump address */
+        updationJumps.push(CodeExt.pc);
+    }
+
+    @Override
+    public void visit(IfHeader ifHeader) {
+        elsePatches.push(new ArrayList<>());
+        statementPatches.push(new ArrayList<>());
+        conditionType = ConditionType.IfStmnt;
+    }
+
+    @Override
+    public void visit(StatementHeader statementHeader) {
+        /* patch every statement thing now */
+        for(int fixUp : statementPatches.pop()) {
+            CodeExt.fixup(fixUp);
+        }
     }
 
     @Override
@@ -82,7 +198,9 @@ public class CodeGenerator extends VisitorAdaptor {
     public void visit(ElseHeader elseHeader) {
         CodeExt.putJump(0);
         beyondPatches.push(CodeExt.pc - 2);
-        CodeExt.fixup(elsePatches.pop());
+        for(int fixUp : elsePatches.pop()) {
+            CodeExt.fixup(fixUp);
+        }
     }
 
     @Override
@@ -135,15 +253,43 @@ public class CodeGenerator extends VisitorAdaptor {
     }
 
     @Override
+    public void visit(ConditionSingle conditionSingle) {
+        OrCondition(conditionSingle);
+    }
+
+    @Override
+    public void visit(ConditionList conditionList) {
+        OrCondition(conditionList);
+    }
+
+    @Override
     public void visit(CondFactRelExpr condFactRelExpr) {
        /* put false jump to somewhere, no idea where, then patch it after the statement is done */
+        int op = relOps.get(condFactRelExpr.getRelOp().getClass());
+        CodeExt.putFalseJump(op, 0);
+        switch(conditionType) {
+            case ForLoop:
+                beyondJumps.peek().add(CodeExt.pc - 2);
+                break;
+            case IfStmnt:
+                elsePatches.peek().add(CodeExt.pc - 2);
+                break;
+            default:
+        }
     }
 
     @Override
     public void visit(CondFactExprSingle condFactExprSingle) {
         CodeExt.loadConst(0);
         CodeExt.putFalseJump(CodeExt.ne, 0);
-        elsePatches.push(CodeExt.pc - 2);
+        switch(conditionType) {
+            case ForLoop:
+                beyondJumps.peek().add(CodeExt.pc - 2);
+                break;
+            case IfStmnt:
+                elsePatches.peek().add(CodeExt.pc - 2);
+                break;
+        }
     }
 
     @Override
