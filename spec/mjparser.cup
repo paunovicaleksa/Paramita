@@ -58,7 +58,7 @@ nonterminal StatementList, DesignatorStatement, Statement, DesignatorList;
 nonterminal ClassDecl, ClassMethods, ClassStaticVars, ClassStaticInitializers, ClassStaticInitializerList, ClassStaticInitializer;
 nonterminal ClassVarList, ClassVarType, ClassStaticVar, StaticOpen, ClassStatics;
 
-nonterminal ForHeader, ForList, ForCondition, AssignList, ForInit;
+nonterminal ForHeader, ForList, ForCondition, AssignList, ForInit, ElseHeader;
 
 nonterminal AssignOp, RelOp, AddOp, MulOp;
 
@@ -160,7 +160,7 @@ Statement ::= (StatementDesignatorStatement) DesignatorStatement SEMI
             |
             (StatementIf) IF LPAREN Condition RPAREN Statement
             |
-            (StatementIfElse) IF LPAREN Condition RPAREN Statement ELSE Statement
+            (StatementIfElse) IF LPAREN Condition RPAREN Statement ElseHeader Statement
             |
             (StatementBreak) BREAK SEMI
             |
@@ -174,12 +174,14 @@ Statement ::= (StatementDesignatorStatement) DesignatorStatement SEMI
             |
             (StatementPrint) PRINT LPAREN Expr RPAREN SEMI
             |
-            (StatementPrintNumber) PRINT LPAREN Expr COMMA NUMCONST:number SEMI
+            (StatementPrintNumber) PRINT LPAREN Expr COMMA NUMCONST:number RPAREN SEMI
             |
             (StatementFor) ForHeader Statement
             |
             (StatementStatementList) LBRACE StatementList RBRACE
             ;
+
+ElseHeader ::= (ElseHeader) ELSE;
 
 ForHeader ::= (ForHeader) ForInit LPAREN ForList SEMI ForCondition SEMI ForList RPAREN;
 

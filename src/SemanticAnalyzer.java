@@ -4,6 +4,7 @@ import rs.etf.pp1.symboltable.concepts.Obj;
 import rs.etf.pp1.symboltable.concepts.Struct;
 
 import org.apache.log4j.Logger;
+import util.codegen.CodeExt;
 import util.semantics.StructExt;
 import util.semantics.TabExt;
 
@@ -107,6 +108,8 @@ public class SemanticAnalyzer extends VisitorAdaptor {
             reportError("Main method not found", program);
         }
 
+        /* cant set main pc here, since i dont know the main address! */
+        CodeExt.dataSize = TabExt.currentScope.getnVars();
         TabExt.chainLocalSymbols(program.obj);
         TabExt.closeScope();
     }
@@ -494,7 +497,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
     public void visit(StatementPrint statementPrint) {
         Expr expr = statementPrint.getExpr();
         if(expr.struct != TabExt.intType && expr.struct != TabExt.charType && expr.struct != TabExt.boolType) {
-            reportInfo("Unsupported type for print statememnt.", statementPrint);
+            reportError("Unsupported type for print statememnt.", statementPrint);
         }
     }
 
@@ -502,7 +505,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
     public void visit(StatementPrintNumber statementPrintNumber) {
         Expr expr = statementPrintNumber.getExpr();
         if(expr.struct != TabExt.intType && expr.struct != TabExt.charType && expr.struct != TabExt.boolType) {
-            reportInfo("Unsupported type for print statememnt.", statementPrintNumber);
+            reportError("Unsupported type for print statememnt.", statementPrintNumber);
         }
     }
 

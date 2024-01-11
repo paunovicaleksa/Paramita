@@ -40,7 +40,41 @@ public class CodeExt extends Code {
 
             default:
                 error("Greska: nelegalan operand u Code.load");
+                System.out.println(o.getName());
         }
+    }
+
+    public static void init() {
+        /* init chr */
+        Obj chr = TabExt.find("chr");
+        chr.setAdr(pc);
+        put(enter);
+        put(1);
+        put(1);
+        put(load_n);
+        put(exit);
+        put(return_);
+
+        /* init ord */
+        Obj ord = TabExt.find("ord");
+        ord.setAdr(pc);
+        put(enter);
+        put(1);
+        put(1);
+        put(load_n);
+        put(exit);
+        put(return_);
+
+        /* init len */
+        Obj len = TabExt.find("len");
+        len.setAdr(pc);
+        put(enter);
+        put(1);
+        put(1);
+        put(load_n);
+        put(arraylength);
+        put(exit);
+        put(return_);
     }
 
 }

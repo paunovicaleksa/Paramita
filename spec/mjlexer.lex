@@ -79,7 +79,8 @@ import java_cup.runtime.Symbol;
 
 "//" {yybegin(COMMENT);}
 <COMMENT> . {yybegin(COMMENT);}
-<COMMENT> "\r\n" { yybegin(YYINITIAL); }
+<COMMENT> "\r" { yybegin(YYINITIAL); }
+<COMMENT> "\n" { yybegin(YYINITIAL); }
 
 "true"        { return new_symbol(sym.BOOLCONST, true); }
 "false"       { return new_symbol(sym.BOOLCONST, false);}
