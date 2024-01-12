@@ -1,15 +1,32 @@
 program test
 
-char baracks;
+class Cacan {
+    int cac;
+}
+
+class Macan extends Cacan {
+    Cacan c;
+    int mac[];
+
+    {
+        int method() { return 3; }
+    }
+}
 
 {
+    void main() Macan mac; int arr1[]; int arr2[]; int j;{
 
-    bool truther() { print('t'); return true; }
-    void main() int i; {
-       for(i = 0; truther(); i++) {
-            if(i == 5) break;
-            continue;
-            print('n');
-       }
+        // first error
+        mac = new Macan();
+        mac.c = new Cacan();
+
+        // second error
+        arr1 = new int[5];
+        arr2 = new int[2];
+        for(j = 0; j < len(arr1); j++) arr1[j] = j + 3;
+        mac.mac = new int[3];
+        [mac.cac,,*mac.mac] = arr1;
+        print(mac.cac);
+        print(mac.mac[0]);
     }
 }

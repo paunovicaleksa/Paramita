@@ -11,6 +11,15 @@ import java.util.Set;
 public class StructExt extends Struct {
     private Set<Obj> inheritedMethods = new HashSet<>();
     private String className;
+    private int tvfp;
+
+    public int getTvfp() {
+        return tvfp;
+    }
+
+    public void setTvfp(int tvfp) {
+        this.tvfp = tvfp;
+    }
 
     public String getClassName() {
         return className;

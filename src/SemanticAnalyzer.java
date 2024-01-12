@@ -328,6 +328,8 @@ public class SemanticAnalyzer extends VisitorAdaptor {
                     ((StructExt)currentClass.getType()).getInheritedMethods().add(addObj);
                 }
             }
+        } else {
+            TabExt.insert(Obj.Fld, "$tvfp$", TabExt.intType);
         }
     }
 
