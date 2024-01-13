@@ -30,7 +30,7 @@ class Mest extends Test {
 
     {
         void f() { print('c'); }
-        void m(int num) { statss = num; }
+        void m(int num) { t = new Test(); t.e(); }
     }
 }
 
@@ -41,7 +41,5 @@ class Mest extends Test {
         m.mmm = 123;
         t.m(123);
         j = m.mmm;
-        print(j);
-        print(Mest.statss);
     }
 }

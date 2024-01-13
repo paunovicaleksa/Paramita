@@ -12,6 +12,15 @@ public class CodeExt extends Code {
 
     public static void addClass(StructExt c) {
         classes.add(c);
+        c.setTvfp(dataSize);
+        /* change dataSize here!!!*/
+        for(Obj m : c.getMembers()) {
+            if(m.getKind() != Obj.Meth) continue;
+            /* name + -1 + adr */
+            dataSize += m.getName().length() + 2;
+        }
+        /* -2 */
+        dataSize++;
     }
 
     public static void load (Obj o) {
@@ -88,25 +97,25 @@ public class CodeExt extends Code {
     /* write tvfs etc. */
     public static void initClasses() {
        for(StructExt cl : classes) {
-           cl.setTvfp(dataSize);
+           int writePtr = cl.getTvfp();
            for(Obj m : cl.getMembers()) {
                if(m.getKind() != Obj.Meth) continue;
 
                for(char c : m.getName().toCharArray()) {
                     loadConst(c);
                     put(putstatic);
-                    put2(dataSize++);
+                    put2(writePtr++);
                }
                loadConst(-1);
                put(putstatic);
-               put2(dataSize++);
+               put2(writePtr++);
                loadConst(m.getAdr());
                put(putstatic);
-               put2(dataSize++);
+               put2(writePtr++);
            }
            loadConst(-2);
            put(putstatic);
-           put2(dataSize++);
+           put2(writePtr);
        }
     }
 }

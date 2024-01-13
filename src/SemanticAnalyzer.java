@@ -739,7 +739,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
         Struct designatorStruct = designator.obj.getType();
         Struct exprStruct = designatorStatementAssignExpr.getExpr().struct;
 
-        if(!exprStruct.assignableTo(designatorStruct)){
+        if(exprStruct == null || !exprStruct.assignableTo(designatorStruct)){
             reportError("Types not compatible", designatorStatementAssignExpr);
             return;
         }
