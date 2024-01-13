@@ -4,6 +4,7 @@ import rs.etf.pp1.symboltable.concepts.Obj;
 import rs.etf.pp1.symboltable.concepts.Struct;
 
 import org.apache.log4j.Logger;
+import sun.security.krb5.internal.crypto.Des;
 import util.codegen.CodeExt;
 import util.semantics.StructExt;
 import util.semantics.TabExt;
@@ -22,7 +23,6 @@ public class SemanticAnalyzer extends VisitorAdaptor {
     private boolean returnFound = false;
     private boolean staticScope = false;
     private int loopDepth = 0;
-    private ArrayList<Designator> dList = null;
 
     public boolean isError() {
         return error;
@@ -86,6 +86,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
         if(prevType.getKind() == StructExt.Class) {
             paramList.add(0, prevType);
         } else if(currentClass != null && currentMethod != null &&
+                TabExt.currentScope().getOuter().findSymbol(designator.obj.getName()) != null &&
                 TabExt.currentScope.getOuter().findSymbol(designator.obj.getName()).equals(designator.obj)) {
             paramList.add(0, currentClass.getType());
         }
@@ -98,6 +99,11 @@ public class SemanticAnalyzer extends VisitorAdaptor {
             reportError("Program not declared??", programName);
         }
         TabExt.openScope();
+
+        /* for storing array addresses */
+        TabExt.arrSrc = Tab.insert(Obj.Var, "$arrSrc$", new StructExt(Struct.Array, TabExt.noType));
+        TabExt.arrDst = Tab.insert(Obj.Var, "$arrDst$", new StructExt(Struct.Array, TabExt.noType));
+        TabExt.typeAccess = Tab.insert(Obj.Var, "$typeAcess$", TabExt.intType);
     }
 
     @Override
@@ -756,58 +762,56 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 
     @Override
     public void visit(DesignatorStatementUnpack designatorStatementUnpack) {
+        designatorStatementUnpack.arraylist = designatorStatementUnpack.getDesignatorList().arraylist;
         Struct designator1Type = designatorStatementUnpack.getDesignator().obj.getType();
         Struct designator2Type = designatorStatementUnpack.getDesignator1().obj.getType();
 
         if(designator1Type.getKind() != Struct.Array || designator2Type.getKind() != Struct.Array) {
             reportError("Two rightmost designators must be arrays", designatorStatementUnpack);
-            dList = null;
             return;
         }
 
         if(!designator2Type.getElemType().assignableTo(designator1Type.getElemType())) {
             reportError("Two array types not assignable", designatorStatementUnpack);
-            dList = null;
             return;
         }
 
 
-        for(Designator d : dList) {
+        for(Designator d : (ArrayList<Designator>)designatorStatementUnpack.arraylist) {
             if(d == null) {
                 continue;
             }
 
             if(TabExt.isNotAssignable(d.obj)) {
                 reportError("Designator " + d.obj.getName() + " must be assignable", designatorStatementUnpack);
-                dList = null;
                 return;
             }
 
             Struct dType = d.obj.getType();
             if(!designator2Type.getElemType().assignableTo(dType)) {
                 reportError("Type mismatch for " + d.obj.getName(), designatorStatementUnpack);
-                dList = null;
                 return;
             }
         }
 
-        dList = null;
         reportInfo("Unpack statement OK", designatorStatementUnpack);
     }
 
     @Override
     public void visit(DesignatorListComma designatorListComma) {
-        dList.add(null);
+        designatorListComma.arraylist = designatorListComma.getDesignatorList().arraylist;
+        designatorListComma.arraylist.add(null);
     }
 
     @Override
     public void visit(DesignatorListList designatorListList) {
-        dList.add(designatorListList.getDesignator());
+        designatorListList.arraylist = designatorListList.getDesignatorList().arraylist;
+        designatorListList.arraylist.add(designatorListList.getDesignator());
     }
 
     @Override
     public void visit(DesignatorListEmpty designatorListEmpty) {
-        dList = new ArrayList<>();
+        designatorListEmpty.arraylist = new ArrayList<Designator>();
     }
 
     @Override

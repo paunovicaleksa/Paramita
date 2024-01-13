@@ -1,6 +1,6 @@
 import ast.*;
-import rs.etf.pp1.mj.runtime.Code;
 import rs.etf.pp1.symboltable.concepts.Obj;
+import rs.etf.pp1.symboltable.concepts.Struct;
 import util.codegen.CodeExt;
 import util.semantics.StructExt;
 import util.semantics.TabExt;
@@ -27,8 +27,8 @@ public class CodeGenerator extends VisitorAdaptor {
     private Stack<Integer> updationJumps = new Stack<>();
     private Stack<ArrayList<Integer>> beyondJumps = new Stack<>();
     /* unpack statement stuff */
-    private ArrayList<Designator> dList = null;
     private final Map<Class, Integer> relOps = new HashMap<>();
+    private Obj currentClass = null;
 
 
     /* i have to patch every && here pretty much, so everything in the list */
@@ -47,6 +47,21 @@ public class CodeGenerator extends VisitorAdaptor {
         }
     }
 
+    private boolean parentIsCall(SyntaxNode node) {
+        return node.getParent() instanceof FactorCall ||
+                node.getParent() instanceof DesignatorStatementCall;
+    }
+
+    private void loadDesignator(Designator designator) {
+        if(!(designator.getParent() instanceof  FactorCall) &&
+                !(designator.getParent() instanceof  DesignatorList) &&
+                !(designator.getParent() instanceof  DesignatorStatement) &&
+                !(designator.getParent() instanceof  StatementRead) &&
+                designator.obj.getKind() != Obj.Type) {
+            CodeExt.load(designator.obj);
+        }
+    }
+
     @Override
     public void visit(ProgramName programName) {
         /* init universe scope methods */
@@ -61,12 +76,34 @@ public class CodeGenerator extends VisitorAdaptor {
     }
 
     @Override
+    public void visit(ClassNameIdent classNameIdent) {
+        currentClass = classNameIdent.obj;
+    }
+
+    @Override
+    public void visit(ClassNameExtends classNameExtends) {
+        currentClass = classNameExtends.obj;
+    }
+
+    @Override
+    public void visit(ClassDecl classDecl) {
+        StructExt classType = (StructExt)classDecl.getClassName().obj.getType();
+        classType.copyAddresses();
+        CodeExt.addClass(classType);
+        currentClass = null;
+    }
+
+    @Override
     public void visit(MethodName methodName) {
         methodName.obj.setAdr(CodeExt.pc);
         /* enter method */
         CodeExt.put(CodeExt.enter);
         CodeExt.put(methodName.obj.getFpPos());
         CodeExt.put(methodName.obj.getLocalSymbols().size());
+        if(methodName.getName().equals("main") && methodName.obj.getType() == TabExt.noType) {
+            CodeExt.mainPc = methodName.obj.getAdr();
+            CodeExt.initClasses();
+        }
     }
 
     @Override
@@ -79,15 +116,6 @@ public class CodeGenerator extends VisitorAdaptor {
 
         CodeExt.put(CodeExt.trap);
         CodeExt.put(1);
-
-        if(methodDecl.getMethodName().getName().equals("main") && methodDecl.getMethodName().obj.getType() == TabExt.noType) {
-            CodeExt.mainPc = methodDecl.getMethodName().obj.getAdr();
-        }
-    }
-
-    private boolean wasNew(Expr expr) {
-        return (expr instanceof  ExprTerm) && (((ExprTerm)expr).getTerm() instanceof TermFactor) &&
-                ((TermFactor)((ExprTerm)expr).getTerm()).getFactor() instanceof FactorNewTypeNoPars;
     }
 
     @Override
@@ -226,18 +254,18 @@ public class CodeGenerator extends VisitorAdaptor {
     @Override
     public void visit(DesignatorStatementAssignExpr designatorStatementAssignExpr) {
         CodeExt.store(designatorStatementAssignExpr.getDesignator().obj);
-
-        /* fix this lol? */
-        if(wasNew(designatorStatementAssignExpr.getExpr())) {
-            Code.load(designatorStatementAssignExpr.getDesignator().obj);
-            Code.loadConst(((StructExt)designatorStatementAssignExpr.getDesignator().obj.getType()).getTvfp());
-            CodeExt.put(CodeExt.putfield);
-            CodeExt.put2(0);
-        }
     }
 
     @Override
+    /* keep class address in the global typeadr var */
     public void visit(DesignatorStatementIncrement designatorStatementIncrement) {
+        if(designatorStatementIncrement.getDesignator() instanceof DesignatorSuffixDot) {
+            /* could have been just dup... address already on stack */
+            CodeExt.put(CodeExt.dup);
+        } else if(designatorStatementIncrement.getDesignator() instanceof DesignatorSuffixArray) {
+            CodeExt.put(CodeExt.dup2);
+        }
+        CodeExt.load(designatorStatementIncrement.getDesignator().obj);
         CodeExt.loadConst(1);
         CodeExt.put(CodeExt.add);
         CodeExt.store(designatorStatementIncrement.getDesignator().obj);
@@ -245,6 +273,13 @@ public class CodeGenerator extends VisitorAdaptor {
 
     @Override
     public void visit(DesignatorStatementDecrement designatorStatementDecrement) {
+        if(designatorStatementDecrement.getDesignator() instanceof DesignatorSuffixDot) {
+            /* could have been just dup... address already on stack */
+            CodeExt.put(CodeExt.dup);
+        } else if(designatorStatementDecrement.getDesignator() instanceof DesignatorSuffixArray) {
+            CodeExt.put(CodeExt.dup2);
+        }
+        CodeExt.load(designatorStatementDecrement.getDesignator().obj);
         CodeExt.loadConst(-1);
         CodeExt.put(CodeExt.add);
         CodeExt.store(designatorStatementDecrement.getDesignator().obj);
@@ -252,25 +287,46 @@ public class CodeGenerator extends VisitorAdaptor {
 
     @Override
     public void visit(DesignatorStatementCall designatorStatementCall) {
+        /* method call */
         Obj method = designatorStatementCall.getDesignator().obj;
-        CodeExt.put(CodeExt.call);
-        CodeExt.put2(method.getAdr() - CodeExt.pc + 1);
+        /* class method call*/
+        if(designatorStatementCall.getDesignator() instanceof DesignatorSuffixDot ||(
+                currentClass != null && method.getLevel() == 1
+                )) {
+            CodeExt.load(TabExt.typeAccess);
+            CodeExt.put(CodeExt.getfield);
+            CodeExt.put2(0);
+            CodeExt.put(CodeExt.invokevirtual);
+            for(char c : method.getName().toCharArray()) {
+                CodeExt.put4(c);
+            }
+            CodeExt.put4(-1);
+        } else {
+            CodeExt.put(CodeExt.call);
+            CodeExt.put2(method.getAdr() - CodeExt.pc + 1);
+        }
         if(method.getType() != TabExt.noType) {
             CodeExt.put(CodeExt.pop);
         }
     }
 
     @Override
-    /* todo: fix for class field access */
     public void visit(DesignatorStatementUnpack designatorStatementUnpack) {
-        Obj arrDest = designatorStatementUnpack.getDesignator().obj;
-        Obj arrSrc = designatorStatementUnpack.getDesignator1().obj;
+        designatorStatementUnpack.arraylist = designatorStatementUnpack.getDesignatorList().arraylist;
+        Obj tempArrDest = designatorStatementUnpack.getDesignator().obj;
+        Obj tempArrSrc = designatorStatementUnpack.getDesignator1().obj;
         /* first compare lengths */
-        CodeExt.load(arrDest);
+        CodeExt.load(tempArrDest);
+        /* put into global arrDst */
+        CodeExt.store(TabExt.arrDst);
+        CodeExt.load(TabExt.arrDst);
         CodeExt.put(CodeExt.arraylength);
-        CodeExt.loadConst(dList.size());
+        CodeExt.loadConst(designatorStatementUnpack.arraylist.size());
         CodeExt.put(CodeExt.add);
-        CodeExt.load(arrSrc);
+        /* put into global arrSrc */
+        CodeExt.load(tempArrSrc);
+        CodeExt.store(TabExt.arrSrc);
+        CodeExt.load(TabExt.arrSrc);
         CodeExt.put(CodeExt.arraylength);
         CodeExt.putFalseJump(CodeExt.gt, CodeExt.pc + 5);
         CodeExt.put(CodeExt.trap);
@@ -278,20 +334,20 @@ public class CodeGenerator extends VisitorAdaptor {
 
         /* store into designator list designators, i is array index also */
         int i;
-        for(i = dList.size() - 1; i >= 0; i--) {
-            if(dList.get(i) == null) continue;
+        for(i = designatorStatementUnpack.arraylist.size() - 1; i >= 0; i--) {
+            if(designatorStatementUnpack.arraylist.get(i) == null) continue;
 
-            CodeExt.load(arrSrc);
+            CodeExt.load(TabExt.arrSrc);
             CodeExt.loadConst(i);
-            CodeExt.load(new Obj(Obj.Elem, "$elem", arrSrc.getType().getElemType()));
+            CodeExt.load(new Obj(Obj.Elem, "$elem", tempArrSrc.getType().getElemType()));
 
-            CodeExt.store(dList.get(i).obj);
+            CodeExt.store(((Designator)designatorStatementUnpack.arraylist.get(i)).obj);
         }
         int beyondFix;
         int conditionPc;
         int statementFix;
         int updationJump;
-        i = dList.size();
+        i = designatorStatementUnpack.arraylist.size();
 
         /* loop until arraylength of designator 1*/
         /* initial part */
@@ -300,13 +356,13 @@ public class CodeGenerator extends VisitorAdaptor {
         CodeExt.loadConst(0);
         /* condition */
         conditionPc = CodeExt.pc;
-        CodeExt.load(arrDest);
+        CodeExt.load(TabExt.arrDst);
         CodeExt.put(CodeExt.arraylength);
         CodeExt.putFalseJump(CodeExt.lt, 0); /* fixup later i guess*/
         beyondFix = CodeExt.pc - 2;
         CodeExt.putJump(0);
         statementFix = CodeExt.pc - 2;
-        /* updation */
+        /* updation?? */
         updationJump = CodeExt.pc;
         CodeExt.loadConst(1);
         CodeExt.put(CodeExt.add);
@@ -319,14 +375,15 @@ public class CodeGenerator extends VisitorAdaptor {
         CodeExt.fixup(statementFix);
         /* statement */
         CodeExt.put(CodeExt.dup2);
-        CodeExt.load(arrSrc);
+        CodeExt.load(TabExt.arrSrc);
         CodeExt.put(CodeExt.dup_x1);
         CodeExt.put(CodeExt.pop);
-        CodeExt.load(new Obj(Obj.Elem, "$elem", arrSrc.getType().getElemType()));
-        CodeExt.load(arrDest);
+        CodeExt.load(new Obj(Obj.Elem, "$elem", tempArrSrc.getType().getElemType()));
+        /* insane hacks */
+        CodeExt.load(TabExt.arrDst);
         CodeExt.put(CodeExt.dup_x2);
         CodeExt.put(CodeExt.pop);
-        CodeExt.store(new Obj(Obj.Elem, "$elem", arrDest.getType().getElemType()));;
+        CodeExt.store(new Obj(Obj.Elem, "$elem", tempArrDest.getType().getElemType()));;
         CodeExt.putJump(updationJump);
         CodeExt.fixup(beyondFix);
         /* after loop */
@@ -336,67 +393,54 @@ public class CodeGenerator extends VisitorAdaptor {
 
     @Override
     public void visit(DesignatorListEmpty designatorListEmpty) {
-        dList = new ArrayList<>();
+        designatorListEmpty.arraylist = new ArrayList<Designator>();
     }
 
     @Override
     public void visit(DesignatorListComma designatorListComma) {
-        dList.add(null);
+        designatorListComma.arraylist = designatorListComma.getDesignatorList().arraylist;
+        designatorListComma.arraylist.add(null);
     }
 
     @Override
     public void visit(DesignatorListList designatorListList) {
-        dList.add(designatorListList.getDesignator());
+        designatorListList.arraylist = designatorListList.getDesignatorList().arraylist;
+        designatorListList.arraylist.add(designatorListList.getDesignator());
     }
 
     @Override
     public void visit(DesignatorBaseNamespace designatorBaseNamespace) {
-        if(!(designatorBaseNamespace.getParent() instanceof DesignatorStatementAssignExpr) &&
-                !(designatorBaseNamespace.getParent() instanceof  FactorCall) &&
-                !(designatorBaseNamespace.getParent() instanceof  DesignatorStatementCall) &&
-                !(designatorBaseNamespace.getParent() instanceof  DesignatorList) &&
-                !(designatorBaseNamespace.getParent() instanceof  DesignatorStatementUnpack)) {
-                    CodeExt.load(designatorBaseNamespace.obj);
+        if(currentClass != null && currentClass.getType().getMembers().contains(designatorBaseNamespace.obj)) {
+            CodeExt.put(CodeExt.load_n);
         }
+
+        loadDesignator(designatorBaseNamespace);
     }
 
     @Override
     /* only load if not doing store later */
     public void visit(DesignatorBaseIdent designatorBaseIdent) {
-        if(!(designatorBaseIdent.getParent() instanceof DesignatorStatementAssignExpr) &&
-            !(designatorBaseIdent.getParent() instanceof  FactorCall) &&
-            !(designatorBaseIdent.getParent() instanceof  DesignatorStatementCall) &&
-            !(designatorBaseIdent.getParent() instanceof  DesignatorList) &&
-            !(designatorBaseIdent.getParent() instanceof  DesignatorStatementUnpack) &&
-            !(designatorBaseIdent.getParent() instanceof  StatementRead)) {
-                CodeExt.load(designatorBaseIdent.obj);
+        if(currentClass != null && currentClass.getType().getMembers().contains(designatorBaseIdent.obj)) {
+            CodeExt.put(CodeExt.load_n);
         }
+
+        loadDesignator(designatorBaseIdent);
     }
 
     @Override
     public void visit(DesignatorSuffixArray designatorSuffixArray) {
-        if(!(designatorSuffixArray.getParent() instanceof DesignatorStatementAssignExpr) &&
-                !(designatorSuffixArray.getParent() instanceof  FactorCall) &&
-                !(designatorSuffixArray.getParent() instanceof  DesignatorStatementCall) &&
-                !(designatorSuffixArray.getParent() instanceof  DesignatorList) &&
-                !(designatorSuffixArray.getParent() instanceof  DesignatorStatementUnpack) &&
-                !(designatorSuffixArray.getParent() instanceof  StatementRead)) {
-                    CodeExt.load(designatorSuffixArray.obj);
-        }
+        loadDesignator(designatorSuffixArray);
     }
 
     @Override
     public void visit(DesignatorSuffixDot designatorSuffixDot) {
         /* should eventually be changed */
-        if(!(designatorSuffixDot.getParent() instanceof DesignatorStatementAssignExpr) &&
-                !(designatorSuffixDot.getParent() instanceof  FactorCall) &&
-                !(designatorSuffixDot.getParent() instanceof  DesignatorStatementCall) &&
-                !(designatorSuffixDot.getParent() instanceof  DesignatorList) &&
-                !(designatorSuffixDot.getParent() instanceof  DesignatorStatementUnpack) &&
-                !(designatorSuffixDot.getParent() instanceof  StatementRead)) {
-            CodeExt.load(designatorSuffixDot.obj);
+        if(parentIsCall(designatorSuffixDot)) {
+            CodeExt.store(TabExt.typeAccess);
+            CodeExt.load(TabExt.typeAccess);
         }
-        /* but what if its a method call, get tvfp probably, will see how that works out ?? */
+
+        loadDesignator(designatorSuffixDot);
     }
 
     @Override
@@ -459,6 +503,22 @@ public class CodeGenerator extends VisitorAdaptor {
     @Override
     public void visit(FactorCall factorCall) {
         Obj method = factorCall.getDesignator().obj;
+        /* class method call*/
+        if(factorCall.getDesignator() instanceof DesignatorSuffixDot || (
+                currentClass != null && method.getLevel() == 1
+                )) {
+            CodeExt.load(TabExt.typeAccess);
+            CodeExt.put(CodeExt.getfield);
+            CodeExt.put2(0);
+            CodeExt.put(CodeExt.invokevirtual);
+            for(char c : method.getName().toCharArray()) {
+                CodeExt.put4(c);
+            }
+            CodeExt.put4(-1);
+        } else {
+            CodeExt.put(CodeExt.call);
+            CodeExt.put2(method.getAdr() - CodeExt.pc + 1);
+        }
         CodeExt.put(CodeExt.call);
         CodeExt.put2(method.getAdr() - CodeExt.pc + 1);
     }
@@ -467,6 +527,10 @@ public class CodeGenerator extends VisitorAdaptor {
     public void visit(FactorNewTypeNoPars factorNewTypeNoPars) {
         CodeExt.put(CodeExt.new_);
         CodeExt.put2(factorNewTypeNoPars.struct.getNumberOfFields() * 4);
+        CodeExt.put(CodeExt.dup);
+        CodeExt.loadConst(((StructExt)factorNewTypeNoPars.struct).getTvfp());
+        CodeExt.put(CodeExt.putfield);
+        CodeExt.put2(0);
     }
 
     @Override

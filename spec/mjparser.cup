@@ -54,7 +54,7 @@ terminal String IDENT;
 nonterminal ConstDecl, ConstDeclList, ConstType, VarDeclList, VarDecl, VarType;
 nonterminal DeclarationList, NamespaceList, Namespace, NamespaceInit;
 nonterminal MethodDeclList, MethodDecl, FormParList, FormParam, LocalVarList, FormPars;
-nonterminal StatementList, DesignatorStatement, Statement, DesignatorList;
+nonterminal StatementList, Statement;
 nonterminal ClassDecl, ClassMethods, ClassStaticVars, ClassStaticInitializers, ClassStaticInitializerList, ClassStaticInitializer;
 nonterminal ClassVarList, ClassVarType, ClassStaticVar, StaticOpen, ClassStatics;
 
@@ -64,7 +64,7 @@ nonterminal AssignOp, RelOp, AddOp, MulOp;
 
 nonterminal rs.etf.pp1.symboltable.concepts.Obj Program, ProgramName, ConstVals, MethodName, Designator, ClassName;
 nonterminal rs.etf.pp1.symboltable.concepts.Struct Type, MethType, Factor, Term, Expr, ArrayDeclaration, CondFact, CondTerm, Condition;
-nonterminal java.util.ArrayList ActualPars, MethodCall;
+nonterminal java.util.ArrayList ActualPars, MethodCall, DesignatorList, DesignatorStatement;
 
 precedence left ELSE;
 

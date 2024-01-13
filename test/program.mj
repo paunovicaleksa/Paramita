@@ -58,7 +58,53 @@ class Oliveira extends Katrina {
 }
 
 {
-    void main() Katrina oli; {
-        oli = new Oliveira();
+    void main() Katrina oli;
+}
+program test
+
+class Cacan {
+    int caci[];
+    int cac;
+}
+
+class Macan extends Cacan {
+    Cacan c[];
+    int mac[];
+
+    {
+        int method() { return 3; }
     }
+}
+
+
+{
+
+    int getIndex(Macan m) {
+        m.cac++;
+        return m.cac;
+    }
+
+    void main() Macan mac; int arr1[]; int arr2[]; int j; {
+
+        // first error
+        mac = new Macan();
+        mac.c = new Cacan[10];
+        mac.c[0] = new Cacan();
+        mac.c[1] = new Cacan();
+
+        // second error
+        arr1 = new int[5];
+        arr2 = new int[2];
+        for(j = 0; j < len(arr1); j++) arr1[j] = j + 3;
+        mac.mac = new int[3];
+        mac.c[0].caci = new int[3];
+        mac.c[1].caci = new int[3];
+        mac.cac = 0;
+        [mac.cac,*mac.c[getIndex(mac)].caci] = arr1;
+        print(mac.cac);
+        for(j = 0; j < len(mac.c[0].caci); j++) {
+            print(mac.c[1].caci[j]);
+        }
+    }
+
 }

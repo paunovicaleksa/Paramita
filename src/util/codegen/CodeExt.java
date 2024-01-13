@@ -5,7 +5,15 @@ import rs.etf.pp1.symboltable.concepts.Obj;
 import util.semantics.StructExt;
 import util.semantics.TabExt;
 
+import java.util.ArrayList;
+
 public class CodeExt extends Code {
+    private static final ArrayList<StructExt> classes = new ArrayList<>();
+
+    public static void addClass(StructExt c) {
+        classes.add(c);
+    }
+
     public static void load (Obj o) {
         switch (o.getKind()) {
 
@@ -77,4 +85,28 @@ public class CodeExt extends Code {
         put(return_);
     }
 
+    /* write tvfs etc. */
+    public static void initClasses() {
+       for(StructExt cl : classes) {
+           cl.setTvfp(dataSize);
+           for(Obj m : cl.getMembers()) {
+               if(m.getKind() != Obj.Meth) continue;
+
+               for(char c : m.getName().toCharArray()) {
+                    loadConst(c);
+                    put(putstatic);
+                    put2(dataSize++);
+               }
+               loadConst(-1);
+               put(putstatic);
+               put2(dataSize++);
+               loadConst(m.getAdr());
+               put(putstatic);
+               put2(dataSize++);
+           }
+           loadConst(-2);
+           put(putstatic);
+           put2(dataSize++);
+       }
+    }
 }

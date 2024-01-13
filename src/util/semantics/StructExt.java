@@ -5,6 +5,7 @@ import rs.etf.pp1.symboltable.concepts.Obj;
 import rs.etf.pp1.symboltable.concepts.Struct;
 import rs.etf.pp1.symboltable.structure.SymbolDataStructure;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -76,5 +77,17 @@ public class StructExt extends Struct {
     @Override
     public boolean compatibleWith(Struct other) {
         return this.equals(other) || this == TabExt.nullType && other.isRefType() || other == TabExt.nullType && this.isRefType();
+    }
+
+    public void copyAddresses() {
+        for(Obj inheritedMethod : inheritedMethods) {
+            for(Obj parentMethod : getElemType().getMembers()) {
+                if(inheritedMethod.getName().equals(parentMethod.getName())) {
+                    inheritedMethod.setAdr(parentMethod.getAdr());
+                    System.out.println("found a method to copy adr " + inheritedMethod.getName() + " " + inheritedMethod.getAdr());
+                    break;
+                }
+            }
+        }
     }
 }

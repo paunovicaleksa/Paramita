@@ -9,6 +9,11 @@ import java.util.ArrayList;
 
 /* https://rti.etf.bg.ac.rs/rti/ir4ps/predavanja/Projektni%20uzorci/02%20Unikat.pdf */
 public class TabExt extends Tab {
+    private static final ArrayList<Obj> globalVars = new ArrayList<>();
+
+    public static Obj arrSrc;
+    public static Obj arrDst;
+    public static Obj typeAccess;
     public static final StructExt noType = new StructExt(Struct.None);
     public static final StructExt intType = new StructExt(Struct.Int);
     public static final StructExt charType = new StructExt(Struct.Char);
@@ -16,6 +21,14 @@ public class TabExt extends Tab {
     public static final StructExt nullType = new StructExt(Struct.Class);
     public  static final StructExt boolType = new StructExt(Struct.Bool);
     public static final Obj noObj = new Obj(Obj.Var, "noObj", noType);
+
+    public static Obj getGlobalVar(int i) {
+        return globalVars.get(i);
+    }
+
+    public static void addGlobalVar(Obj o) {
+        globalVars.add(o);
+    }
 
     /* same for now */
     public static void init() {

@@ -1,32 +1,47 @@
 program test
 
-class Cacan {
-    int cac;
-}
-
-class Macan extends Cacan {
-    Cacan c;
-    int mac[];
+namespace trial {
+    class Trial {
+        int f;
+        {
+            void tr() { }
+        }
+    }
 
     {
-        int method() { return 3; }
+        void f() { print('f'); }
+    }
+}
+
+
+class Test {
+    int num;
+    {
+        void m(int num) { this.num = num; }
+        void f() {}
+        int e() { print('e'); return 5; }
+    }
+}
+
+class Mest extends Test {
+    static int statss;
+    Test t;
+    int mmm;
+
+    {
+        void f() { print('c'); }
+        void m(int num) { statss = num; }
     }
 }
 
 {
-    void main() Macan mac; int arr1[]; int arr2[]; int j;{
-
-        // first error
-        mac = new Macan();
-        mac.c = new Cacan();
-
-        // second error
-        arr1 = new int[5];
-        arr2 = new int[2];
-        for(j = 0; j < len(arr1); j++) arr1[j] = j + 3;
-        mac.mac = new int[3];
-        [mac.cac,,*mac.mac] = arr1;
-        print(mac.cac);
-        print(mac.mac[0]);
+    void main() Mest m; Test t; int j; {
+        m = new Mest();
+        t = new Mest();
+        m.mmm = 123;
+        t.m(123);
+        j = m.mmm;
+        print(j);
+        print(Mest.statss);
     }
 }
