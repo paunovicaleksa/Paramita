@@ -33,7 +33,7 @@ public class Main {
 
 		Reader br = null;
 		try {
-			File sourceCode = new File("test/codegentest.mj");
+			File sourceCode = new File("test/test303.mj");
 			log.info("Compiling source file: " + sourceCode.getAbsolutePath());
 			
 			br = new BufferedReader(new FileReader(sourceCode));
@@ -51,12 +51,12 @@ public class Main {
 				return;
 			}
 			initTab();
-			Visitor semanticAnalyzer = new SemanticAnalyzer();
+			SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer();
 			prog.traverseBottomUp(semanticAnalyzer);
 			// ispis prepoznatih programskih konstrukcija
 			DumpSymbolTableVisitor dumpSymbolTableVisitor = new DumpSymbolTableVisitor();
 			TabExt.dump(dumpSymbolTableVisitor);
-			if(((SemanticAnalyzer)semanticAnalyzer).isError()) {
+			if(semanticAnalyzer.isError()) {
 				log.error("Semantic errors detected, aborting");
 				return;
 			}

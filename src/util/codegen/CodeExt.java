@@ -9,6 +9,7 @@ import java.util.ArrayList;
 
 public class CodeExt extends Code {
     private static final ArrayList<StructExt> classes = new ArrayList<>();
+    private static final ArrayList<Obj> staticInitList = new ArrayList<>();
 
     public static void addClass(StructExt c) {
         classes.add(c);
@@ -21,6 +22,10 @@ public class CodeExt extends Code {
         }
         /* -2 */
         dataSize++;
+    }
+
+    public static void addInitializer(Obj init) {
+        staticInitList.add(init);
     }
 
     public static void load (Obj o) {
@@ -117,5 +122,13 @@ public class CodeExt extends Code {
            put(putstatic);
            put2(writePtr);
        }
+    }
+
+    public static void initScopes() {
+        for(Obj initializer : staticInitList) {
+            /* calling void method with no args */
+            CodeExt.put(CodeExt.call);
+            CodeExt.put2(initializer.getAdr() - CodeExt.pc + 1);
+        }
     }
 }

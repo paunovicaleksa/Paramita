@@ -62,7 +62,7 @@ nonterminal ForHeader, ForList, ForCondition, AssignList, ForInit, ElseHeader, I
 
 nonterminal AssignOp, RelOp, AddOp, MulOp;
 
-nonterminal rs.etf.pp1.symboltable.concepts.Obj Program, ProgramName, ConstVals, MethodName, Designator, ClassName;
+nonterminal rs.etf.pp1.symboltable.concepts.Obj Program, ProgramName, ConstVals, MethodName, Designator, ClassName, StaticScopeInit;
 nonterminal rs.etf.pp1.symboltable.concepts.Struct Type, MethType, Factor, Term, Expr, ArrayDeclaration, CondFact, CondTerm, Condition;
 nonterminal java.util.ArrayList ActualPars, MethodCall, DesignatorList, DesignatorStatement;
 
@@ -121,9 +121,11 @@ ClassStaticInitializerList ::= (ClassStaticInitializerListSingle) ClassStaticIni
             (ClassStaticInitializerListList) ClassStaticInitializerList ClassStaticInitializer
             ;
 
-ClassStaticInitializer ::= (ClassStaticInitializer) StaticOpen LBRACE StatementList RBRACE;
+ClassStaticInitializer ::= (ClassStaticInitializer) StaticOpen StaticScopeInit LBRACE StatementList RBRACE;
 
 StaticOpen ::= (StaticOpen) STATIC;
+
+StaticScopeInit ::= (StaticScopeInit) /* epsilon */;
 
 ClassMethods ::= (ClassMethodsSingle) LBRACE MethodDeclList RBRACE
             |

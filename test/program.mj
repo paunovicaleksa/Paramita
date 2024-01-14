@@ -108,3 +108,50 @@ class Macan extends Cacan {
     }
 
 }
+program test
+
+namespace trial {
+    class Trial {
+        int f;
+        {
+            void tr() { }
+        }
+    }
+
+    {
+        void f() { print('f'); }
+    }
+}
+
+
+class Test {
+    int num;
+    {
+        void m(int num) { this.num = num; }
+        void f() {}
+        int e() { print('e'); return 5; }
+    }
+}
+
+int a, b, c, d;
+
+class Mest extends Test {
+    static int statss;
+    Test t;
+    int mmm;
+
+    {
+        void f() { print('c'); }
+        void m(int num) { f(); }
+    }
+}
+
+{
+    void main() Mest m; Test t; int j; {
+        m = new Mest();
+        t = new Mest();
+        m.mmm = 123;
+        t.m(123);
+        j = m.mmm;
+    }
+}

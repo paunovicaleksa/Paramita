@@ -309,6 +309,11 @@ public class SemanticAnalyzer extends VisitorAdaptor {
     }
 
     @Override
+    public void visit(StaticScopeInit staticScopeInit) {
+        staticScopeInit.obj = new Obj(Obj.Meth, "$scope$", Tab.noType);
+    }
+
+    @Override
     public void visit(ClassStatics classStatics) {
         reportInfo("Leaving class statics, whether empty or full!", classStatics);
         staticScope = false;

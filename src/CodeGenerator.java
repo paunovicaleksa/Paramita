@@ -94,6 +94,22 @@ public class CodeGenerator extends VisitorAdaptor {
     }
 
     @Override
+    public void visit(StaticScopeInit staticScopeInit) {
+        staticScopeInit.obj.setAdr(CodeExt.pc);
+        /* to be called before main, when i initialize classes */
+        CodeExt.addInitializer(staticScopeInit.obj);
+        CodeExt.put(CodeExt.enter);
+        CodeExt.put(0);
+        CodeExt.put(0);
+    }
+
+    @Override
+    public void visit(ClassStaticInitializer classStaticInitializer) {
+        CodeExt.put(CodeExt.exit);
+        CodeExt.put(CodeExt.return_);
+    }
+
+    @Override
     public void visit(MethodName methodName) {
         methodName.obj.setAdr(CodeExt.pc);
         /* enter method */
@@ -103,6 +119,7 @@ public class CodeGenerator extends VisitorAdaptor {
         if(methodName.getName().equals("main") && methodName.obj.getType() == TabExt.noType) {
             CodeExt.mainPc = methodName.obj.getAdr();
             CodeExt.initClasses();
+            CodeExt.initScopes();
         }
     }
 
@@ -519,8 +536,6 @@ public class CodeGenerator extends VisitorAdaptor {
             CodeExt.put(CodeExt.call);
             CodeExt.put2(method.getAdr() - CodeExt.pc + 1);
         }
-        CodeExt.put(CodeExt.call);
-        CodeExt.put2(method.getAdr() - CodeExt.pc + 1);
     }
 
     @Override
