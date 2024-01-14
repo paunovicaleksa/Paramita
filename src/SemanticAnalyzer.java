@@ -1,10 +1,8 @@
 import ast.*;
-import rs.etf.pp1.symboltable.Tab;
 import rs.etf.pp1.symboltable.concepts.Obj;
 import rs.etf.pp1.symboltable.concepts.Struct;
 
 import org.apache.log4j.Logger;
-import sun.security.krb5.internal.crypto.Des;
 import util.codegen.CodeExt;
 import util.semantics.StructExt;
 import util.semantics.TabExt;
@@ -23,6 +21,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
     private boolean returnFound = false;
     private boolean staticScope = false;
     private int loopDepth = 0;
+    private final int globalVarNum = 30;
 
     public boolean isError() {
         return error;
@@ -101,9 +100,11 @@ public class SemanticAnalyzer extends VisitorAdaptor {
         TabExt.openScope();
 
         /* for storing array addresses */
-        TabExt.arrSrc = Tab.insert(Obj.Var, "$arrSrc$", new StructExt(Struct.Array, TabExt.noType));
-        TabExt.arrDst = Tab.insert(Obj.Var, "$arrDst$", new StructExt(Struct.Array, TabExt.noType));
-        TabExt.typeAccess = Tab.insert(Obj.Var, "$typeAcess$", TabExt.intType);
+        TabExt.arrSrc = TabExt.insert(Obj.Var, "$arrSrc$", new StructExt(Struct.Array, TabExt.noType));
+        TabExt.arrDst = TabExt.insert(Obj.Var, "$arrDst$", new StructExt(Struct.Array, TabExt.noType));
+        for(int i = 0; i < globalVarNum; i ++) {
+            TabExt.addGlobal(TabExt.insert(Obj.Var, "$typeInfo" + i + "$", TabExt.intType));
+        }
     }
 
     @Override
@@ -310,7 +311,7 @@ public class SemanticAnalyzer extends VisitorAdaptor {
 
     @Override
     public void visit(StaticScopeInit staticScopeInit) {
-        staticScopeInit.obj = new Obj(Obj.Meth, "$scope$", Tab.noType);
+        staticScopeInit.obj = new Obj(Obj.Meth, "$scope$", TabExt.noType);
     }
 
     @Override

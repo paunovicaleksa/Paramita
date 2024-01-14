@@ -1,107 +1,23 @@
-//Test 303
+program tt
 
+class Macan {
 
-program test_303
-
-namespace Predmeti{
-    const int cinilac = 4, delilac = 3;
-
-	class Predmet
-	{
-		 int tezina;
-		 char vrsta;
-		{
-			 void postaviTezinu(int tezina) {this.tezina = tezina;}
-			 void ucitajTezinu() { read(tezina); }
-			 int zapremina() { return 0;}
-			 int Q() {return zapremina() * tezina;} // this NEEDS TO BE PREPENDED HERE
-			 void postaviVrstu(char vrsta) {this.vrsta = vrsta;}
-			 char dohvVrstu() { return vrsta; }
-			 int dohvTezinu() { return tezina; }
-			 void ispisi() {
-				print(vrsta);
-				print(Q()); // prints weight? (needed for sum)
-			 }
-		}
-	}
-
-	class Sfera extends Predmet
-	{
-		int r;
-		{
-			 void postaviPoluprecnik(int r) {this.r = r; }
-
-			 int zapremina()
-				int z;
-			{
-				z = cinilac;
-				return z * r / delilac;
-			}
-		}
-	}
-
-	class Kvadar extends Predmet
-	{
-		 int a, b, c;
-		{
-			 void postaviStranice(int a, int b, int c) {this.a = a; this.b = b; this.c = c;}
-			 int zapremina()
-				int z;
-			{
-				z = a * b * c;
-				print('k');
-				return z;
-			}
-		}
-	}
-
-	{}
-}
-
-class ProstiBrojevi{
-
-	static int prosti[];
-	static int X,i,j;
-	static bool flag;
-
-	static{
-		print('s'); print('t'); print('a'); print('t'); print('i'); print('c'); print(eol); // prints static
-		prosti = new int[10];
-
-		for(X = 0, i = 2; X < 10; i++){
-			flag = true;
-			for(j = 2; j < i; j++){
-				if(i%j == 0){
-					flag = false;
-					break;
-				}
-			}
-			if(flag){
-				prosti[X] = i;
-				X++;
-			}
-		}
-	}
-
-}
-
-int zapreminaK, zapreminaS;
-int tezinaK, tezinaS;
-{
-
-	void ispis( Predmeti::Predmet p)
-	{
-		p.ispisi(); // prints kind (char) and weight * volume
-		print(p.zapremina()); // print volume (needed for sum)
-		print(p.dohvTezinu()); // prints weight (set)
-		print(eol);
-	}
-
-	void main() Predmeti::Sfera s1;
-	{
-		s1 = new Predmeti::Sfera();
-		s1.postaviPoluprecnik(1);
-		s1.postaviVrstu('s');
-		ispis(s1);
+    {
+        void callee(int c) { print(c); }
+        int returner() { return 5; }
+        int method(int another) { return another; }
+        void caller() {
+            this.callee(this.method(this.returner()));
+        }
     }
 }
+
+
+{
+    void main() Macan mac; {
+        mac = new Macan();
+        mac.callee(mac.method(mac.returner()));
+    }
+}
+
+

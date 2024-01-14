@@ -23,12 +23,13 @@ public class CodeGenerator extends VisitorAdaptor {
     private Stack<Integer> beyondPatches = new Stack<>();
     /* for loop stuff */
     private Stack<Integer> conditionJumps = new Stack<>();
-    private Stack<Integer> statementJumps = new Stack();
+    private Stack<Integer> statementJumps = new Stack<>();
     private Stack<Integer> updationJumps = new Stack<>();
     private Stack<ArrayList<Integer>> beyondJumps = new Stack<>();
     /* unpack statement stuff */
     private final Map<Class, Integer> relOps = new HashMap<>();
     private Obj currentClass = null;
+    private final Stack<Obj> typeVars = new Stack<>();
 
 
     /* i have to patch every && here pretty much, so everything in the list */
@@ -59,6 +60,30 @@ public class CodeGenerator extends VisitorAdaptor {
                 !(designator.getParent() instanceof  StatementRead) &&
                 designator.obj.getKind() != Obj.Type) {
             CodeExt.load(designator.obj);
+        }
+    }
+
+    private void callMethod(Designator d, Obj method) {
+        if(d instanceof DesignatorSuffixDot || (
+                currentClass != null && method.getLevel() == 1
+        )) {
+            if(d instanceof DesignatorSuffixDot) {
+                Obj var = typeVars.pop();
+                TabExt.addGlobal(var);
+                CodeExt.load(var);
+            } else {
+                CodeExt.put(CodeExt.load_n);
+            }
+            CodeExt.put(CodeExt.getfield);
+            CodeExt.put2(0);
+            CodeExt.put(CodeExt.invokevirtual);
+            for(char c : method.getName().toCharArray()) {
+                CodeExt.put4(c);
+            }
+            CodeExt.put4(-1);
+        } else {
+            CodeExt.put(CodeExt.call);
+            CodeExt.put2(method.getAdr() - CodeExt.pc + 1);
         }
     }
 
@@ -306,22 +331,7 @@ public class CodeGenerator extends VisitorAdaptor {
     public void visit(DesignatorStatementCall designatorStatementCall) {
         /* method call */
         Obj method = designatorStatementCall.getDesignator().obj;
-        /* class method call*/
-        if(designatorStatementCall.getDesignator() instanceof DesignatorSuffixDot ||(
-                currentClass != null && method.getLevel() == 1
-                )) {
-            CodeExt.load(TabExt.typeAccess);
-            CodeExt.put(CodeExt.getfield);
-            CodeExt.put2(0);
-            CodeExt.put(CodeExt.invokevirtual);
-            for(char c : method.getName().toCharArray()) {
-                CodeExt.put4(c);
-            }
-            CodeExt.put4(-1);
-        } else {
-            CodeExt.put(CodeExt.call);
-            CodeExt.put2(method.getAdr() - CodeExt.pc + 1);
-        }
+        callMethod(designatorStatementCall.getDesignator(), method);
         if(method.getType() != TabExt.noType) {
             CodeExt.put(CodeExt.pop);
         }
@@ -453,8 +463,9 @@ public class CodeGenerator extends VisitorAdaptor {
     public void visit(DesignatorSuffixDot designatorSuffixDot) {
         /* should eventually be changed */
         if(parentIsCall(designatorSuffixDot)) {
-            CodeExt.store(TabExt.typeAccess);
-            CodeExt.load(TabExt.typeAccess);
+            typeVars.push(TabExt.getNextGlobal());
+            CodeExt.store(typeVars.peek());
+            CodeExt.load(typeVars.peek());
         }
 
         loadDesignator(designatorSuffixDot);
@@ -521,21 +532,7 @@ public class CodeGenerator extends VisitorAdaptor {
     public void visit(FactorCall factorCall) {
         Obj method = factorCall.getDesignator().obj;
         /* class method call*/
-        if(factorCall.getDesignator() instanceof DesignatorSuffixDot || (
-                currentClass != null && method.getLevel() == 1
-                )) {
-            CodeExt.load(TabExt.typeAccess);
-            CodeExt.put(CodeExt.getfield);
-            CodeExt.put2(0);
-            CodeExt.put(CodeExt.invokevirtual);
-            for(char c : method.getName().toCharArray()) {
-                CodeExt.put4(c);
-            }
-            CodeExt.put4(-1);
-        } else {
-            CodeExt.put(CodeExt.call);
-            CodeExt.put2(method.getAdr() - CodeExt.pc + 1);
-        }
+        callMethod(factorCall.getDesignator(), method);
     }
 
     @Override

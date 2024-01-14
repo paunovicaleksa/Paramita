@@ -6,14 +6,15 @@ import rs.etf.pp1.symboltable.concepts.Scope;
 import rs.etf.pp1.symboltable.concepts.Struct;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.Queue;
 
 /* https://rti.etf.bg.ac.rs/rti/ir4ps/predavanja/Projektni%20uzorci/02%20Unikat.pdf */
 public class TabExt extends Tab {
-    private static final ArrayList<Obj> globalVars = new ArrayList<>();
+    private static final Queue<Obj> globalVars = new LinkedList<>();
 
     public static Obj arrSrc;
     public static Obj arrDst;
-    public static Obj typeAccess;
     public static final StructExt noType = new StructExt(Struct.None);
     public static final StructExt intType = new StructExt(Struct.Int);
     public static final StructExt charType = new StructExt(Struct.Char);
@@ -22,12 +23,12 @@ public class TabExt extends Tab {
     public  static final StructExt boolType = new StructExt(Struct.Bool);
     public static final Obj noObj = new Obj(Obj.Var, "noObj", noType);
 
-    public static Obj getGlobalVar(int i) {
-        return globalVars.get(i);
+    public static Obj getNextGlobal() {
+        return globalVars.remove();
     }
 
-    public static void addGlobalVar(Obj o) {
-        globalVars.add(o);
+    public static void addGlobal(Obj globalVar) {
+        globalVars.add(globalVar);
     }
 
     /* same for now */
