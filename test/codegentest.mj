@@ -3,7 +3,7 @@ program tt
 class Macan {
 
     {
-        void callee(int c) { print(c); }
+        int callee(int c) { print(c); return 5;}
         int returner() { return 5; }
         int method(int another) { return another; }
         void caller() {
@@ -14,9 +14,10 @@ class Macan {
 
 
 {
-    void main() Macan mac; {
+    void main() Macan mac; int asdf; {
         mac = new Macan();
-        mac.callee(mac.method(mac.returner()));
+        // see if i need a whole stack for this, maybe stack gets cleared up
+        asdf = mac.callee(mac.method(mac.returner()));
     }
 }
 

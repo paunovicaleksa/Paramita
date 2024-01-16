@@ -2,12 +2,18 @@
     <property name="src" location="src"/>
     <property name="out" location="out"/>
     <property name="spec" location="spec"/>
+    <!--set default args-->
+    <property name="csrc" value="test/test303.mj"/>
+    <property name="cout" value="test/program.obj"/>
+    <property name="mjin" value="test/program.obj"/>
+    <property name="debug" value=""/>
     <target name="clean">
         <delete file="${src}/MJParser.java"/>
         <delete dir="${src}/ast"/>
         <delete file="${src}/sym.java"/>
         <delete file="${src}/Yylex.java"/>
         <delete file="${spec}/mjparser_astbuild.cup"/>
+        <delete dir="${out}"/>
     </target>
     <target name="lexerGen">
         <delete file="${src}/Yylex.java"/>
@@ -36,7 +42,7 @@
         <replace dir="src" value="ast" token="src.ast" summary="true"/>
     </target>
 
-    <target name="compile" depends="parserGen,lexerGen">
+    <target name="compile">
         <mkdir dir="${out}"/>
         <javac srcdir="${src}" destdir="${out}" includeantruntime="false">
             <classpath>
@@ -48,12 +54,31 @@
             </classpath>
         </javac>
     </target>
-    <target name="run" depends="compile">
-        <java classpath="${out}:lib/*" classname="Main" fork="true"/>
+    <target name="compiler-run" depends="compile">
+        <java classpath="${out}:lib/*" classname="Main" fork="true">
+            <arg value="${csrc}"/>
+            <arg value="${cout}"/>
+        </java>
     </target>
     <target name="disasm">
         <java classname="rs.etf.pp1.mj.runtime.disasm">
-            <arg value="test/program.obj"/>
+            <arg value="${mjin}"/>
+            <classpath>
+                <pathelement location="lib/mj-runtime-1.1.jar"/>
+            </classpath>
+        </java>
+    </target>
+    <target name="mjvm-run" depends="disasm">
+        <java classname="rs.etf.pp1.mj.runtime.Run">
+            <arg value="${mjin}"/>
+            <!--uncomment when running from ant window-->
+<!--
+            <redirector input="input.txt"/>
+-->
+            <!--uncomment for debug-->
+<!--
+            <arg value="-debug"/>
+-->
             <classpath>
                 <pathelement location="lib/mj-runtime-1.1.jar"/>
             </classpath>

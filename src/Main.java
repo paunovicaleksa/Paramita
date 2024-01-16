@@ -33,7 +33,9 @@ public class Main {
 
 		Reader br = null;
 		try {
-			File sourceCode = new File("test/codegentest.mj");
+			if(args.length < 2) throw new IOException();
+
+			File sourceCode = new File(args[0]);
 			log.info("Compiling source file: " + sourceCode.getAbsolutePath());
 			
 			br = new BufferedReader(new FileReader(sourceCode));
@@ -43,17 +45,18 @@ public class Main {
 	        Symbol s = p.parse();  //pocetak parsiranja
 
 	        Program prog = (Program)(s.value);
-			// ispis sintaksnog stabla
+			/* syntax analysis */
 			log.info("\n" + prog.toString(""));
 			log.info("===================================");
 			if(p.getError()) {
 				log.info("Syntax errors detected, aborting.");
 				return;
 			}
+			/* semantic analysis */
 			initTab();
 			SemanticAnalyzer semanticAnalyzer = new SemanticAnalyzer();
 			prog.traverseBottomUp(semanticAnalyzer);
-			// ispis prepoznatih programskih konstrukcija
+			/* */
 			DumpSymbolTableVisitor dumpSymbolTableVisitor = new DumpSymbolTableVisitor();
 			TabExt.dump(dumpSymbolTableVisitor);
 			if(semanticAnalyzer.isError()) {
@@ -61,9 +64,10 @@ public class Main {
 				return;
 			}
 
+			/* code generation */
 			Visitor codeGenerator = new CodeGenerator();
 			prog.traverseBottomUp(codeGenerator);
-			File f = new File("test/program.obj");
+			File f = new File(args[1]);
 			if(f.exists()) f.delete();
 			CodeExt.write(Files.newOutputStream(f.toPath()));
 		}
